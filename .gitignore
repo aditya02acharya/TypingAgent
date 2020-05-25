@@ -210,6 +210,6 @@ dmypy.json
 .pyre/
 
 # log files.
-.log
+*.log
 
 # End of https://www.gitignore.io/api/python,pycharm,jupyternotebooks
