@@ -1,7 +1,7 @@
 import logging
 import numpy as np
 
-from abstract.device import Device
+from src.abstract.device import Device
 
 
 class TouchScreenDevice(Device):

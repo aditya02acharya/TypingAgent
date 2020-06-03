@@ -3,7 +3,7 @@ import yaml
 import logging
 from os import path
 
-from abstract.environment import AgentEnv
+from src.abstract.environment import AgentEnv
 from src.display.touchscreendevice import TouchScreenDevice
 
 from src.utilities.utils import distance, visual_distance, EMMA_fixation_time
