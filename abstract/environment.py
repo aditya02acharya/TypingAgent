@@ -18,7 +18,7 @@ class AgentEnv(gym.Env, abc.ABC):
         pass
 
     @abc.abstractmethod
-    def reward(self, action):
+    def reward(self, action, movement_time):
         pass
 
     def get_observation_space(self):

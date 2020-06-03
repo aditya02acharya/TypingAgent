@@ -7,9 +7,9 @@ disable_existing_loggers: true
 
 filters:
     info_filter:
-        () : utilities.filter.InfoFilter
+        () : src.utilities.filter.InfoFilter
     debug_filter:
-        (): utilities.filter.DebugFilter
+        (): src.utilities.filter.DebugFilter
 
 formatters:
     standard:
@@ -29,6 +29,7 @@ handlers:
         level: INFO
         formatter: standard
         filename: logs/info.log
+        mode: "w"
         filters: [info_filter]
         maxBytes: 10485760 # 10MB
         backupCount: 20
@@ -39,6 +40,7 @@ handlers:
         level: ERROR
         formatter: error
         filename: logs/errors.log
+        mode: "w"
         maxBytes: 10485760 # 10MB
         backupCount: 20
         encoding: utf8
@@ -48,6 +50,7 @@ handlers:
         level: DEBUG
         formatter: standard
         filename: logs/debug.log
+        mode: "w"
         filters: [debug_filter]
         maxBytes: 10485760 # 10MB
         backupCount: 20
@@ -58,6 +61,7 @@ handlers:
         level: CRITICAL
         formatter: standard
         filename: logs/critical.log
+        mode: "w"
         maxBytes: 10485760 # 10MB
         backupCount: 20
         encoding: utf8
@@ -67,6 +71,7 @@ handlers:
         level: WARN
         formatter: standard
         filename: logs/warn.log
+        mode: "w"
         maxBytes: 10485760 # 10MB
         backupCount: 20
         encoding: utf8
@@ -81,3 +86,6 @@ loggers:
         level: DEBUG
         handlers: [info_file_handler, error_file_handler, critical_file_handler, debug_file_handler, warn_file_handler]
         propogate: no
+
+    src.display:
+        level: DEBUG

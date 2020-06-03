@@ -1,8 +1,0 @@
-2020-05-25 15:15:05,229 - src.vision.visionagentenvironment - DEBUG - State Space: Box(1,)
-2020-05-25 15:15:05,229 - src.vision.visionagentenvironment - DEBUG - Action Space: Discrete(44)
-2020-05-25 15:15:05,230 - src.vision.visionagentenvironment - DEBUG - Resetting Environment for start of new trial.
-2020-05-25 15:15:05,230 - src.display.touchscreendevice - DEBUG - Starting the touch screen device.
-2020-05-25 15:15:05,230 - src.display.touchscreendevice - DEBUG - setting the sensor to row {1} and column {1}
-2020-05-25 15:15:05,230 - src.vision.visionagentenvironment - DEBUG - Eye initialised to location: {1, 1}
-2020-05-25 15:15:05,230 - src.vision.visionagentenvironment - DEBUG - Target key for the trial set to: {['u']}
-2020-05-25 15:15:05,232 - src.vision.visionagentenvironment - DEBUG - current belief state is {array(['u'], dtype='<U1')}

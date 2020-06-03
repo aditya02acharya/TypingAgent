@@ -10,7 +10,7 @@ layout = [['q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p', '-'],
 # numpy.save('../layouts/english_layout.npy', layout)
 
 # load array
-data = numpy.load('../layouts/english_layout.npy')
+data = numpy.load('../../layouts/english_layout.npy')
 # print the array
 print(list(product(*[[row for row in range(4)], [column for column in range(11)]])))
 # foo = numpy.where(data == 'm')

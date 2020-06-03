@@ -14,16 +14,16 @@ def distance(origin, destination):
     return sqrt(((origin[0] - destination[0]) ** 2 + (origin[1] - destination[1]) ** 2))
 
 
-def visual_distance(distance, user_distance):
+def visual_distance(dist, user_distance):
     """
     Calculate visual distance, as degrees, given euclidian distance.
     User distance needs to be given in the same unit.
 
-    :param distance: euclidian distance between points.
+    :param dist: euclidian distance between points.
     :param user_distance: distance of user from the device.
     :return:
     """
-    return 180 * (atan(distance / user_distance) / pi)
+    return 180 * (atan(dist / user_distance) / pi)
 
 
 def EMMA_fixation_time(dist, freq=0.1):

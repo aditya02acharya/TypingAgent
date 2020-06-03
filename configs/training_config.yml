@@ -1,0 +1,5 @@
+vision:
+  reward: 5
+  discount: 0.99
+  learning_rate: 0.01
+  epsilon: 0.1

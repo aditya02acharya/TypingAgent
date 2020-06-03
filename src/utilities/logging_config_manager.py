@@ -34,7 +34,7 @@ def setup_logging(default_path='logging.yaml', default_level=logging.INFO, env_k
                 config = yaml.safe_load(f.read())
                 logging.config.dictConfig(config)
             except Exception as e:
-                print('Error in Logging Configuration. Using default configs', e)
+                print('Error in Logging Configuration. Using default configs. ', e)
                 logging.basicConfig(level=default_level, stream=sys.stdout)
     else:
         logging.basicConfig(level=default_level, stream=sys.stdout)
