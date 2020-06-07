@@ -9,5 +9,4 @@ dependencies:
   - pip:
     - chainer
     - chainerrl
-    - cupy-cuda101
     - tqdm
