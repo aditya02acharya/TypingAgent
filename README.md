@@ -29,8 +29,6 @@ This command creates the anaconda environment **typing**. Use to command below t
 conda activate typing
 ```
 
-End with an example of getting some data out of the system or using it for a little demo
-
 ### Running the scripts
 To train the agents, use the command below.
 ```
