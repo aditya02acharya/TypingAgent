@@ -88,3 +88,16 @@ def WHo_mt(dist, sigma):
     mt = pow((k_alpha * pow(((sigma - y0) / dist), (alpha - 1))), 1 / alpha) + x0
 
     return mt
+
+
+def parse_transition_index(record):
+    """
+    Utility function to format transition function index.
+    :param record: tuple as string.
+    :return: list of features.
+    """
+    token = record[1:-1].split(', ')
+    token[0] = int(token[0])
+    token[1] = float(token[1])
+    token[2] = int(token[2])
+    return token

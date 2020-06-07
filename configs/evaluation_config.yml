@@ -1,0 +1,8 @@
+vision:
+  reward: 5
+  discount: 0.99
+  learning_rate: 0.0
+  epsilon: 1.0
+  episodes: 0
+  log_file: 'VisionAgent_test.csv'
+  log_interval: 0

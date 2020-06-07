@@ -10,9 +10,9 @@ layout = [['q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p', '-'],
 # numpy.save('../layouts/english_layout.npy', layout)
 
 # load array
-data = numpy.load('../../layouts/english_layout.npy')
+data = numpy.load('../../layouts/finnish_layout.npy')
 # print the array
-print(list(product(*[[row for row in range(4)], [column for column in range(11)]])))
+print(data)
 # foo = numpy.where(data == 'm')
 # d = [numpy.where(data == 'm')[0][0], numpy.where(data == 'm')[1][0]]
 # print(numpy.hstack(foo))

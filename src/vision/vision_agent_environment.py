@@ -1,3 +1,4 @@
+import sys
 import gym
 import yaml
 import logging
@@ -12,6 +13,7 @@ from src.utilities.utils import distance, visual_distance, EMMA_fixation_time
 class VisionAgentEnv(AgentEnv):
 
     def __init__(self, layout_config, agent_params):
+        
         self.logger = logging.getLogger(__name__)
         self.config_file = None
         if path.exists(path.join('configs', layout_config)):
@@ -20,6 +22,7 @@ class VisionAgentEnv(AgentEnv):
                 self.logger.info("Device Configurations loaded.")
         else:
             self.logger.error("File doesn't exist: Failed to load %s file under configs folder." % layout_config)
+            sys.exit(0)
 
         if self.config_file:
             self.device = TouchScreenDevice(self.config_file['layout_file'], self.config_file['config'])
@@ -51,6 +54,8 @@ class VisionAgentEnv(AgentEnv):
         :param action: int value for eye movement action taken by agent.
         :return: tuple <next state, reward, done, info>
         """
+        self.logger.debug("taking action {%d}" % action)
+
         # take action.
         _, movement_time = self.move_eyes(action)
 
@@ -93,7 +98,6 @@ class VisionAgentEnv(AgentEnv):
         :param movement_time: movement time in seconds for taking action.
         :return: reward: float value to denote goodness of action.
         """
-        self.update_model_time(movement_time)
         if self.is_target():
             reward = self.task_reward - movement_time
         else:
@@ -105,7 +109,7 @@ class VisionAgentEnv(AgentEnv):
 
     def move_eyes(self, action):
         """
-        function to make eye movement.
+        function to make eye movement. Uses EMMA to calculate movement time.
         :param action: int value for eye movement action taken by agent.
         :return: movement time in seconds.
         """
@@ -125,6 +129,7 @@ class VisionAgentEnv(AgentEnv):
             self.logger.debug("took %f seconds to move eyes." % movement_time)
 
         self.prev_eye_loc = self.eye_location
+        self.update_model_time(movement_time * 1000)
         return (mt_enc*1000, mt_exec*1000, mt_enc_l*1000), movement_time
 
     def render(self, mode='human'):

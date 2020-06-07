@@ -2,4 +2,21 @@ vision:
   reward: 5
   discount: 0.99
   learning_rate: 0.01
-  epsilon: 0.1
+  epsilon: 0.9
+  episodes: 3000000
+  log_file: 'vision_learning.csv'
+  log_interval: 10000
+
+finger:
+  reward: 5
+  discount: 0.99
+  learning_rate: 0.01
+  epsilon: 0.9
+  episodes: 3000000
+  log_file: 'finger_learning.csv'
+  log_interval: 10000
+  sat_desired: [0.9, 0.75, 0.5, 0.25, 0.1]
+  sat_true: [0.05, 0.25, 0.5, 0.75, 0.9]
+  action_type: ['Ballistic', 'Peck']
+  transition: 'FingerAgent_Transitions.csv'
+  transition_samples: 1000
