@@ -3,7 +3,7 @@ import yaml
 import numpy
 import logging
 import argparse
-from os import path
+from os import path, makedirs
 from datetime import datetime
 
 from src.utilities.logging_config_manager import setup_logging
@@ -33,6 +33,9 @@ args = parser.parse_args()
 numpy.random.seed(args.seed)
 
 # Setup Logger.
+if not path.isdir("logs"):
+    # if logs folder doesn't exist create one.
+    makedirs("logs")
 setup_logging(default_path=path.join("configs", "logging.yml"))
 logger = logging.getLogger(__name__)
 logger.info("logger is set.")
