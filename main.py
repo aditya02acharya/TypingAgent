@@ -10,7 +10,7 @@ from src.utilities.logging_config_manager import setup_logging
 
 from src.display.touchscreendevice import TouchScreenDevice
 from src.vision.vision_agent import VisionAgent
-from src.finger.finger_agent_environment import FingerAgentEnv
+from src.finger.finger_agent import FingerAgent
 
 parser = argparse.ArgumentParser()
 
@@ -66,9 +66,8 @@ if args.train:
 
     if args.finger or args.all:
         logger.info("Initiating Finger Agent Training.")
-        finger_agent = FingerAgentEnv(config_file['device_config'], train_config['finger'], True)
-        finger_agent.reset()
-        finger_agent.step(10)
+        finger_agent = FingerAgent(config_file['device_config'], train_config['finger'], True)
+        finger_agent.train(finger_agent.episodes)
 
 else:
     if path.exists(path.join("configs", config_file['testing_config'])):
