@@ -47,6 +47,7 @@ class FingerAgentEnv(AgentEnv):
         self.belief_state = None
         self.action_type = None
         self.vision_status = None
+        self.observation_probability = agent_params['observation_probability']
         self.sat_desired_list = agent_params['sat_desired']
         self.sat_desired = None
         self.sat_true_list = agent_params['sat_true']
@@ -176,7 +177,7 @@ class FingerAgentEnv(AgentEnv):
         Function to initialise belief distribution of finger position.
         """
         self.finger_loc_prob = np.ones((self.n_finger_locations,)) * (1.0 / self.n_finger_locations)
-        self.logger.debug("initialised finger position belief to %s" % str(self.finger_loc_prob))
+        self.logger.debug("initialised finger position belief with probability %.2f" % self.finger_loc_prob[0])
 
     def step(self, action):
         """
@@ -193,20 +194,36 @@ class FingerAgentEnv(AgentEnv):
         _, movement_time = self.move_finger(action, self.sat_desired_list[self.sat_desired])
 
         # for acting what was the reward.
-        reward = self.reward(action, movement_time)
+        reward, peck = self.reward(action, movement_time)
 
         # Update the finger location probability with the new location after movement.
         self.update_finger_loc_prob(action)
+
+        # if random sampling enabled select randomly next sat, sat_desired, action type and vision status randomly.
+        if self.random_sample:
+            # Randomly choose if model has eyes or not.
+            self.vision_status = np.random.choice([True, False])
+
+            # Choose a random sat value for next action.
+            self.sat_true = self.sat_true_list.index(np.random.choice(self.sat_true_list))
+
+            # Choose a random action type for next action.
+            self.action_type = self.actions.index(np.random.choice(self.actions))
+
+            # Choose a random sat desired value for next action.
+            self.sat_desired = self.sat_desired_list.index(np.random.choice(self.sat_desired_list))
 
         # update belief state.
         self.set_belief()
 
         # is action terminal.
-        # (for current implementation every action is terminal action).
-        done = True
+        if peck == 1:
+            done = True
+        else:
+            done = False
 
         # currently sending empty dict as info. Can extend it to add something in future.
-        return self.belief_state, reward, done, {}
+        return self.preprocess_belief(), reward, done, {}
 
     def reset(self):
         """
@@ -220,14 +237,10 @@ class FingerAgentEnv(AgentEnv):
                           (self.finger_location[0], self.finger_location[1]))
         self.target = self.device.get_random_key()
         self.logger.debug("Target key for the trial set to: {%s}" % self.target)
-        self.max_finger_loc = self.finger_location[0] * self.device.layout.shape[1] + self.finger_location[1]
-        self.logger.debug("Max Finger location initialised to location: {%d}" % self.max_finger_loc)
         self.model_time = 0.0
         self.action_type = self.actions.index(np.random.choice(self.actions))
         self.vision_status = np.random.choice([True, False])
         self.init_finger_location_prob()
-        self.calc_finger_loc_entropy()
-        self.init_entropy = self.finger_loc_entropy
         self.sat_desired = self.sat_desired_list.index(np.random.choice(self.sat_desired_list))
         self.sat_true = self.sat_true_list.index(np.random.choice(self.sat_true_list))
         self.set_belief()
@@ -240,7 +253,7 @@ class FingerAgentEnv(AgentEnv):
         otherwise p=0.
         :param action: int value for eye movement action taken by agent.
         :param movement_time: movement time in seconds for taking action.
-        :return: reward: float value to denote goodness of action.
+        :return: reward: float value to denote goodness of action and action type
         """
         peck_action = 1 if self.action_type == 1 else 0
 
@@ -248,9 +261,16 @@ class FingerAgentEnv(AgentEnv):
 
         reward = (self.task_reward * peck_action * self.sat_desired_list[self.sat_desired] * hit) - movement_time
 
+        if peck_action == 1 and hit == 0:
+            self.logger.debug("Pressed key {%s}, but target is {%s}" %
+                              (self.device.get_character(self.finger_location[0], self.finger_location[1]),
+                               self.target[0]))
+        elif peck_action == 1 and hit == 1:
+            self.logger.debug("Pressed the correct key.")
+
         self.logger.debug("reward for taking action %d is %.2f" % (action, reward))
 
-        return reward
+        return reward, peck_action
 
     def render(self, mode='human'):
         """
@@ -272,11 +292,13 @@ class FingerAgentEnv(AgentEnv):
         new_finger_loc = [self.finger_location[0] + delta_coord[0], self.finger_location[1] + delta_coord[1]]
         dist = distance(self.finger_location, new_finger_loc)
         dist = self.device.convert_to_meters(dist)
-        self.logger.debug("Distance (in meters): %.2f" % dist)
+        self.logger.debug("Distance to move (in meters): %.2f" % dist)
         movement_time = WHo_mt(dist, sigma)
         self.update_model_time(movement_time)
-        self.logger.debug("took %f seconds to move eyes." % movement_time)
+        self.logger.debug("took %f seconds to move finger." % movement_time)
         new_loc = self.update_sensor_position(action, sigma)
+        self.finger_location = new_loc
+        self.logger.debug("New finger position: {%s}" % str(self.finger_location))
 
         return new_loc, movement_time
 
@@ -320,7 +342,7 @@ class FingerAgentEnv(AgentEnv):
         :return:
         """
         # H(X) = - Σ P(x) log P(x)
-        H = - np.sum(self.finger_loc_prob * np.log(self.finger_loc_prob))
+        H = - np.sum(self.finger_loc_prob * np.log(self.finger_loc_prob + 1e-5))
         self.logger.debug("Entropy calculated to : {%.2f}" % H)
         if normalize:
             # normalized by dividing it by information length.
@@ -328,13 +350,30 @@ class FingerAgentEnv(AgentEnv):
             self.logger.debug("Normalised entropy calculated to : {%.2f}" % H_)
         self.finger_loc_entropy = round(H_, 1)
 
+    def calc_max_finger_loc(self):
+        """
+        Calculates the finger location with highest probability
+        """
+        self.max_finger_loc = np.random.choice(np.where(self.finger_loc_prob == np.max(self.finger_loc_prob))[0])
+        self.logger.debug("Max Finger location initialised to location: {%d}" % self.max_finger_loc)
+
     def set_belief(self):
         """
         Function to update belief state.
         """
+        self.calc_max_finger_loc()
+        self.calc_finger_loc_entropy()
+
         self.belief_state = [np.where(self.device.keys == self.target[0])[0][0], self.max_finger_loc, self.sat_desired,
                              self.sat_true, self.action_type, self.finger_loc_entropy]
-        self.logger.debug("current belief state is {%s}" % str(self.belief_state))
+        self.logger.debug(
+            "current belief state is target key : {%s}, max finger location : {%s}, SAT desired : {%.2f}, "
+            "true SAT : {%.2f}, action type : {%s}, entropy : {%.2f}" % (str(self.target[0]),
+                                                                         str(self.max_finger_loc),
+                                                                         self.sat_desired_list[self.sat_desired],
+                                                                         self.sat_true_list[self.sat_true],
+                                                                         str(self.actions[self.action_type]),
+                                                                         self.finger_loc_entropy))
 
     def preprocess_belief(self):
         """
@@ -359,26 +398,39 @@ class FingerAgentEnv(AgentEnv):
         coord = self.device.get_coordinate(self.target[0])
 
         if self.finger_location[0] in coord[0] and self.finger_location[1] in coord[1]:
-            self.logger.debug("Pressed the correct key.")
             return True
         else:
-            self.logger.debug("Pressed key {%s}, but target is {%s}" %
-                              (self.device.get_character(self.finger_location[0], self.finger_location[1]),
-                               self.target[0]))
             return False
 
     def update_finger_loc_prob(self, action):
         """
         Updates the probabilities of finger locations using Bayes Rule.
-        Bayes Update => b`(s`) = Σs∈S T(s,a,s`)*b(s) / Pr(o|a,b)
+        Bayes Update => b`(s_) = Σs∈S T(s,a,s_)*b(s) / Pr(o|a,b)
         """
-        probs = {}
-        if not self.vision_status:
-            # if eye are not present to track finger position.
-            # b`(s`) = Σs∈S T(s,a,s`)*b(s)
-            for next_loc in self.finger_loc_prob:
-                state = list(product(list(range(self.n_finger_locations)), [self.sat_true_list[self.sat_true]],
-                                     [action]))
-                state = list(map(str, state))
+        self.logger.debug("Current finger position belief is  %s" % str(self.finger_loc_prob))
+        s = list(product(list(range(self.n_finger_locations)), [self.sat_true_list[self.sat_true]],
+                         [action]))
+        s = list(map(str, s))
+        col = list(range(self.n_finger_locations))
+        col = list(map(str, col))
 
-                print(self.transition_model.loc[state, :])
+        observed_location = self.finger_location[0] * self.device.layout.shape[1] + self.finger_location[1]
+
+        transition_prob = self.transition_model.loc[s, :].values
+
+        # b`(s_) = Σs∈S T(s,a,s_)*b(s)
+        updated_belief = transition_prob * self.finger_loc_prob[:, np.newaxis]
+        updated_belief = updated_belief.sum(axis=0)
+
+        if self.vision_status:
+            # if eyes are present at the finger location.
+            # b`(s_) = O(s,a,o) Σs∈S T(s,a,s_)*b(s)
+
+            O = [((1 - self.observation_probability) / (self.n_finger_locations - 1))] * self.n_finger_locations
+            O[observed_location] = self.observation_probability
+
+            updated_belief = updated_belief * np.array(O)
+
+        # Normalise the updated belief b`(s_)
+        self.finger_loc_prob = updated_belief / (np.sum(updated_belief) + 1e-5)  # adding a 1e-5 to avoid divide by 0
+        self.logger.debug("Finger position belief after update is  %s" % str(self.finger_loc_prob))

@@ -20,3 +20,4 @@ finger:
   action_type: ['Ballistic', 'Peck']
   transition: 'FingerAgent_Transitions.csv'
   transition_samples: 1000
+  observation_probability: 0.9
