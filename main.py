@@ -46,7 +46,7 @@ if path.exists(path.join("configs", args.config)):
         config_file = yaml.load(file, Loader=yaml.FullLoader)
         logger.info("App Configurations loaded.")
 else:
-    logger.error("File doesn't exist: Failed to load config.yml file under configs folder.")
+    logger.error("File doesn't exist: Failed to load %s file under configs folder." % str(args.config))
     sys.exit(0)
 
 if args.train:
@@ -83,3 +83,8 @@ else:
         logger.info("Initiating Vision Agent Evaluation.")
         vision_agent = VisionAgent(config_file['device_config'], test_config['vision'])
         vision_agent.evaluate(args.type)
+
+    if args.finger or args.all:
+        logger.info("Initiating Finger Agent Evaluation.")
+        finger_agent = FingerAgent(config_file['device_config'], test_config['finger'], False)
+        finger_agent.evaluate(args.type, test_config['finger']['typing_accuracy'])

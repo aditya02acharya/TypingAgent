@@ -6,3 +6,27 @@ vision:
   episodes: 0
   log_file: 'VisionAgent_test.csv'
   log_interval: 0
+
+finger:
+  reward: 5
+  discount: 0.99
+  learning_rate: 0.0
+  epsilon: 1.0
+  episodes: 0
+  log_file: 'FingerAgent_test.csv'
+  log_interval: 10000
+  sat_desired: [0.9, 0.75, 0.5, 0.25, 0.1]
+  sat_true: [0.05, 0.25, 0.5, 0.75, 0.9]
+  action_type: ['Ballistic', 'Peck']
+  transition: 'FingerAgent_Transitions.csv'
+  transition_samples: 1000
+  observation_probability: 0.9
+  optimizer_name: 'MomentumSGD' # options: Adam, RMSprop, MomentumSGD
+  n_units: 512
+  dropout_ratio: 0.0
+  device_id: 0
+  pre_load: True
+  gpu: False
+  save_path: 'data/models/finger'
+  replay_buffer: 100000
+  typing_accuracy: 0.9

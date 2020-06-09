@@ -213,6 +213,8 @@ class FingerAgentEnv(AgentEnv):
             # Choose a random sat desired value for next action.
             self.sat_desired = self.sat_desired_list.index(np.random.choice(self.sat_desired_list))
 
+        self.calc_max_finger_loc()
+
         # update belief state.
         self.set_belief()
 
@@ -223,7 +225,7 @@ class FingerAgentEnv(AgentEnv):
             done = False
 
         # currently sending empty dict as info. Can extend it to add something in future.
-        return self.preprocess_belief(), reward, done, {}
+        return self.preprocess_belief(), reward, done, {'mt': movement_time}
 
     def reset(self):
         """
@@ -243,6 +245,7 @@ class FingerAgentEnv(AgentEnv):
         self.init_finger_location_prob()
         self.sat_desired = self.sat_desired_list.index(np.random.choice(self.sat_desired_list))
         self.sat_true = self.sat_true_list.index(np.random.choice(self.sat_true_list))
+        self.calc_max_finger_loc()
         self.set_belief()
         return self.preprocess_belief()
 
@@ -294,7 +297,7 @@ class FingerAgentEnv(AgentEnv):
         dist = self.device.convert_to_meters(dist)
         self.logger.debug("Distance to move (in meters): %.2f" % dist)
         movement_time = WHo_mt(dist, sigma)
-        self.update_model_time(movement_time)
+        self.update_model_time(movement_time * 1000)
         self.logger.debug("took %f seconds to move finger." % movement_time)
         new_loc = self.update_sensor_position(action, sigma)
         self.finger_location = new_loc
@@ -361,7 +364,6 @@ class FingerAgentEnv(AgentEnv):
         """
         Function to update belief state.
         """
-        self.calc_max_finger_loc()
         self.calc_finger_loc_entropy()
 
         self.belief_state = [np.where(self.device.keys == self.target[0])[0][0], self.max_finger_loc, self.sat_desired,
@@ -411,8 +413,6 @@ class FingerAgentEnv(AgentEnv):
         s = list(product(list(range(self.n_finger_locations)), [self.sat_true_list[self.sat_true]],
                          [action]))
         s = list(map(str, s))
-        col = list(range(self.n_finger_locations))
-        col = list(map(str, col))
 
         observed_location = self.finger_location[0] * self.device.layout.shape[1] + self.finger_location[1]
 
@@ -425,6 +425,8 @@ class FingerAgentEnv(AgentEnv):
         if self.vision_status:
             # if eyes are present at the finger location.
             # b`(s_) = O(s,a,o) Σs∈S T(s,a,s_)*b(s)
+            self.logger.debug('vision is present re-calculating posterior probability with observation probability '
+                              'from vision')
 
             O = [((1 - self.observation_probability) / (self.n_finger_locations - 1))] * self.n_finger_locations
             O[observed_location] = self.observation_probability
