@@ -30,7 +30,7 @@ conda activate typing
 ```
 
 ### Running the scripts
-To train the agents, use the command below.
+To train the agents, use the command below. Please check and edit the configuration files before the running the scripts.
 ```
 python main.py --train --all --config config.yml
 ```
@@ -44,6 +44,21 @@ To see all available argument, use the command below.
 ```
 python main.py --help
 ```
+
+### Configuration setting
+All project configuration files are kept under configs folder.
+* **config.yml**: this is the main configuration file. You can link config files for experiments here.
+* **device_config.yml**: this file contains the device configuration. For example, layout configuration, key size, etc. 
+* **logging.yml**: centralised project logging configuration. Set logging mode to either `INFO`, `DEBUG`, `WARN`, `CRITICAL`. Logs are stored under logs directory.
+* **training_config.yml**: model training configuration for each agent.
+* **evaluation_config.yml**: model testing configuration for each agent. 
+
+### Project Storage
+* **configs**: contains all configuration files.
+* **data**: contains model outputs. Trained agent data kept under `models`. Test/Evaluation data kept under `output`.
+* **layouts**: contains keyboard layouts. Layouts are stored as 2d-numpy array.
+* **logs**: contains log files.
+* **src**: contains project code base. 
 
 ## Authors
 
