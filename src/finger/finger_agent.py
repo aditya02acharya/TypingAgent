@@ -39,10 +39,14 @@ class FingerAgent(Agent):
         self.episodes = 1000000 if agent_params is None else int(agent_params['episodes'])
         self.log_interval = 1000 if agent_params is None else int(agent_params['log_interval'])
         self.log_filename = agent_params['log_file']
+        embed_size = agent_params['embedding_size']
 
         # Agent Configuration.
-        self.q_func = QFunction(obs_size=self.env.observation_space.shape[0], n_actions=self.env.action_space.n,
-                                n_hidden_channels=n_units, dropout_ratio=dropout_ratio)
+
+        self.q_func = QFunction(n_target=len(self.env.device.keys), n_finger_loc=self.env.n_finger_locations,
+                                n_sat_desired=len(self.env.sat_desired_list), n_sat_true=len(self.env.sat_true_list),
+                                n_action_type=len(self.env.actions), embed_size=embed_size, dropout_ratio=dropout_ratio,
+                                n_actions=self.env.action_space.n, n_hidden_channels=n_units)
 
         if pre_load:
             serializers.load_npz(path.join(self.save_path, 'best', 'model.npz'), self.q_func)
@@ -72,7 +76,7 @@ class FingerAgent(Agent):
         # Now create an agent that will interact with the environment.
         self.agent = chainerrl.agents.DoubleDQN(q_function=self.q_func, optimizer=self.optimizer,
                                                 replay_buffer=replay_buffer, gamma=gamma, explorer=explorer,
-                                                replay_start_size=50000, update_interval=1, target_update_interval=1000,
+                                                replay_start_size=50000, update_interval=1000, target_update_interval=1000,
                                                 target_update_method='soft', phi=phi)
 
         if train:

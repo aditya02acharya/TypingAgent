@@ -67,7 +67,7 @@ class FingerAgentEnv(AgentEnv):
                                              list(range(-(self.device.layout.shape[1] - 1),
                                                         self.device.layout.shape[1], 1))))
 
-        self.observation_space = gym.spaces.Box(low=0.0, high=1.0,
+        self.observation_spac = gym.spaces.Box(low=0.0, high=1.0,
                                                 shape=(len(self.device.keys) +  # one-hot encoding of target
                                                        self.n_finger_locations +  # one-hot encoding of finger location
                                                        len(self.sat_desired_list) +  # one-hot encoding of sat desired
@@ -76,6 +76,7 @@ class FingerAgentEnv(AgentEnv):
                                                        1,  # entropy.
                                                        )
                                                 )
+        self.observation_space = gym.spaces.Box(low=0.0, high=1.0, shape=(6,))
         self.logger.debug("State Space: %s" % repr(self.observation_space))
         self.action_space = gym.spaces.Discrete(len(self.discrete_actions))
         self.logger.debug("Action Space: %s" % repr(self.action_space))
@@ -382,14 +383,16 @@ class FingerAgentEnv(AgentEnv):
         Function to preprocess belief state for neural network input.
         :return:
         """
-        one_hot_target = np.eye(len(self.device.keys))[self.belief_state[0]]
-        one_hot_finger_loc = np.eye(self.n_finger_locations)[self.belief_state[1]]
-        one_hot_sat_desired = np.eye(len(self.sat_desired_list))[self.belief_state[2]]
-        one_hot_sat_true = np.eye(len(self.sat_true_list))[self.belief_state[3]]
-        state = np.concatenate((one_hot_target, one_hot_finger_loc, one_hot_sat_desired, one_hot_sat_true,
-                                [self.belief_state[4]], [self.belief_state[5]]))
+        #one_hot_target = np.eye(len(self.device.keys))[self.belief_state[0]]
+        #one_hot_finger_loc = np.eye(self.n_finger_locations)[self.belief_state[1]]
+        #one_hot_sat_desired = np.eye(len(self.sat_desired_list))[self.belief_state[2]]
+        #one_hot_sat_true = np.eye(len(self.sat_true_list))[self.belief_state[3]]
+        #state = np.concatenate((one_hot_target, one_hot_finger_loc, one_hot_sat_desired, one_hot_sat_true,
+        #                        [self.belief_state[4]], [self.belief_state[5]]))
 
-        self.logger.debug("Pre-processed belief state to one-hot encoded vector of size {%s}" % str(state.shape))
+        #self.logger.debug("Pre-processed belief state to one-hot encoded vector of size {%s}" % str(state.shape))
+
+        state = np.asarray(self.belief_state)
 
         return state.astype(np.float32)
 
