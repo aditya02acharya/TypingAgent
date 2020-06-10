@@ -23,6 +23,7 @@ finger:
   observation_probability: 0.9
   optimizer_name: 'MomentumSGD' # options: Adam, RMSprop, MomentumSGD
   n_units: 512
+  embedding_size: 44
   dropout_ratio: 0.0
   device_id: 0
   pre_load: True
