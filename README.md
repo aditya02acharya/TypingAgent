@@ -37,7 +37,7 @@ python main.py --train --all --config config.yml
 
 To evaluate the trained agent, use the command below.
 ```
-python main.py --all --config config.yml
+python main.py --all --config config.yml --type "hello world>"
 ```
 
 To see all available argument, use the command below.
