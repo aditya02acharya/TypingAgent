@@ -17,6 +17,10 @@ The project also uses GPU for training neural network based AI agents. For GPU s
 
 ### Installing
 
+```
+git clone https://github.com/aditya02acharya/TypingAgent.git
+```
+
 Project provides an anaconda environment setup file to install project prerequisites. 
 Run the command below in the project directory. 
 
@@ -30,7 +34,7 @@ conda activate typing
 ```
 
 ### Running the scripts
-To train the agents, use the command below. Please check and edit the configuration files before the running the scripts.
+To train the agents, use the command below. Please check and edit the configuration files before running the scripts.
 ```
 python main.py --train --all --config config.yml
 ```
