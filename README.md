@@ -72,6 +72,11 @@ All project configuration files are kept under configs folder.
 * **Xinhui Jiang**
 * **Antti Oulasvirta**
 
+## Contributors
+* **Jussi P.P. Jokinen**
+* **Aditya Acharya**
+* **Mohammad Uzair**
+
 ## License
 
 
