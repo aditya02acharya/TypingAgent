@@ -1,16 +1,16 @@
 import numpy
 from itertools import product
 
-layout = [['q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p', '-'],
-          ['-', 'a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l', '-'],
-          ['-', '-', 'z', 'x', 'c', 'v', 'b', 'n', 'm', '<', '<'],
-          ['-', '-', '-', ' ', ' ', ' ', ' ', ' ', '>', '>', '>']]
+layout = [['-', '-', '-', '-', '-', '-', '-', '-', '-', '-', '-'],
+          ['-', 's', '-', '-', '-', '-', '-', '-', '-', '-', '-'],
+          ['-', '-', '-', '-', '-', '-', '-', '-', '-', '-', '-'],
+          ['-', '-', '-', ' ', ' ', ' ', ' ', ' ', '-', '-', '-']]
 
 # save array
-# numpy.save('../layouts/english_layout.npy', layout)
+#numpy.save('../../layouts/three_key_layout.npy', layout)
 
 # load array
-data = numpy.load('../../layouts/finnish_layout.npy')
+data = numpy.load('../../layouts/two_key_layout.npy')
 # print the array
 print(data)
 # foo = numpy.where(data == 'm')

@@ -63,11 +63,10 @@ class QLearningTable:
     def check_state_exist(self, state):
         """
         Function to check if the state already exists in the q-table.
-        :param state:
-        :return:
+        :param state: current agent state.
         """
         if state not in self.q_table.index:
-            self.logger.debug("state {%s} not in q-table. Adding it to the table.")
+            self.logger.info("state {%s} not in q-table. Adding it to the table.")
             # append new state to q table
             self.q_table = self.q_table.append(
                 pd.Series(
@@ -76,6 +75,21 @@ class QLearningTable:
                     name=state,
                 )
             )
+
+    def get_max_q(self, state):
+        """
+        Function returns max q value for given state.
+        :param state:
+        :return: scalar q value.
+        """
+        self.check_state_exist(float(state))
+
+        # choose best action
+        state_action = self.q_table.loc[float(state), :]
+        # some actions may have the same value, randomly choose on in these actions
+        return np.max(state_action)
+
+
 
     def save(self):
         """

@@ -99,5 +99,5 @@ def parse_transition_index(record):
     token = record[1:-1].split(', ')
     token[0] = int(token[0])
     token[1] = float(token[1])
-    token[2] = int(token[2])
+    token[2] = (int(token[2][1:]), int(token[3][:-1]))
     return token

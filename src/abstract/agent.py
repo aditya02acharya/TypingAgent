@@ -9,5 +9,5 @@ class Agent(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def evaluate(self, sentence):
+    def evaluate(self, sentence, **kwargs):
         pass
