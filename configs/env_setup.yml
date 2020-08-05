@@ -6,6 +6,7 @@ dependencies:
   - matplotlib
   - jupyter
   - pandas
+  - python-levenshtein
   - pip:
     - chainer
     - chainerrl

@@ -1,4 +1,4 @@
-name: "finnish keyboard"
+name: "test keyboard"
 layout_file: "finnish_layout.npy"
 config:
   keyboard_start_loc: [563, 1956] # in pixels
