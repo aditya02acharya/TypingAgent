@@ -303,7 +303,8 @@ class FingerAgentEnv(AgentEnv):
 
         self.hit = 1 if self.is_target() else 0
 
-        reward = (self.sat_desired_list[self.sat_desired] * self.task_reward * peck_action * self.hit) - movement_time
+        reward = (self.sat_desired_list[self.sat_desired] * self.task_reward * peck_action * self.hit) - \
+                 (1.0 - self.sat_desired_list[self.sat_desired]) * movement_time
 
         if peck_action == 1 and self.hit == 0:
             self.logger.debug("Pressed key {%s}, but target is {%s}" %
