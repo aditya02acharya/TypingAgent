@@ -47,6 +47,7 @@ class FingerAgentEnv(AgentEnv):
         self.belief_state = None
         self.action_type = None
         self.vision_status = None
+        self.proofread_duration = None
         self.observation_probability = agent_params['observation_probability']
         self.sat_desired_list = agent_params['sat_desired']
         self.sat_desired = None
@@ -56,29 +57,30 @@ class FingerAgentEnv(AgentEnv):
         self.task_reward = agent_params['reward']
         self.init_entropy = None
         self.model_time = 0.0
+        self.hit = 0.0
+        self.dist = 0.0
         self.transition_file = agent_params['transition']
         self.transition_sample = agent_params['transition_samples']
         self.transition_model = None
         self.n_finger_locations = (self.device.layout.shape[0] * self.device.layout.shape[1])
         self.finger_loc_prob = None
+        self.proofread_duration_mean = agent_params['proofread_duration_mean']
+        self.proofread_duration_sd = agent_params['proofread_duration_sd']
 
-        self.discrete_actions = list(product(list(range(-(self.device.layout.shape[0] - 1),
-                                                        self.device.layout.shape[0] - 1, 1)),
-                                             list(range(-(self.device.layout.shape[1] - 1),
-                                                        self.device.layout.shape[1], 1))))
+        self.discrete_action_space = list(product(list(range(44)), list(range(5)), list(range(2))))
+        self.discrete_actions = {}
 
-        self.observation_spac = gym.spaces.Box(low=0.0, high=1.0,
+        self.initialise_action_space()
+
+        self.observation_space = gym.spaces.Box(low=0.0, high=1.0,
                                                 shape=(len(self.device.keys) +  # one-hot encoding of target
                                                        self.n_finger_locations +  # one-hot encoding of finger location
-                                                       len(self.sat_desired_list) +  # one-hot encoding of sat desired
-                                                       len(self.sat_true_list) +  # one-hot encoding of sat true value
-                                                       1 +  # action type.
+                                                       1 +  # sat desired
                                                        1,  # entropy.
                                                        )
                                                 )
-        self.observation_space = gym.spaces.Box(low=0.0, high=1.0, shape=(6,))
         self.logger.debug("State Space: %s" % repr(self.observation_space))
-        self.action_space = gym.spaces.Discrete(len(self.discrete_actions))
+        self.action_space = gym.spaces.Discrete(len(self.discrete_action_space))
         self.logger.debug("Action Space: %s" % repr(self.action_space))
 
         self.logger.debug("Initialise Transition model.")
@@ -90,6 +92,24 @@ class FingerAgentEnv(AgentEnv):
         :param delta: time to increment in sec.
         """
         self.model_time += delta
+
+    def initialise_action_space(self):
+        """
+        Generate polar action space map.
+        :return:
+        """
+        coords = list(product(*[[row for row in range(self.device.layout.shape[0])],
+                                [column for column in range(self.device.layout.shape[1])]]))
+
+        for loc in coords:
+            polar_actions = []
+            first_action = (-loc[0], -loc[1])
+            last_action = (self.device.layout.shape[0] - loc[0] - 1, self.device.layout.shape[1] - loc[1] - 1)
+            for x in range(first_action[0], last_action[0] + 1):
+                for y in range(first_action[1], last_action[1] + 1):
+                    action = (x, y)
+                    polar_actions.append(action)
+            self.discrete_actions[loc] = polar_actions
 
     def initialise_transition(self):
         """
@@ -115,14 +135,18 @@ class FingerAgentEnv(AgentEnv):
         Model captures transition probability of finger from current
         location to next.
         """
-        rows = list(product(list(range(self.n_finger_locations)), self.sat_true_list,
-                            list(range(len(self.discrete_actions)))))
+        original_actions = sum(self.discrete_actions.values(), [])
+        original_actions = list(np.unique(np.array(original_actions), axis=0))
+        original_actions = list(map(tuple, original_actions))
+
+        rows = list(product(list(range(self.n_finger_locations)), self.sat_true_list, original_actions))
 
         cols = list(range(self.n_finger_locations))
 
         self.transition_model = pd.DataFrame(columns=cols, dtype=np.float32)
 
         for i in tqdm.tqdm(range(len(rows))):
+
             # create empty row.
             self.transition_model = self.transition_model.append(
                 pd.Series(
@@ -153,7 +177,9 @@ class FingerAgentEnv(AgentEnv):
         # set of hacks to extract sat and action set.
         index_list = list(map(parse_transition_index, self.transition_model.index.values))
         sat_params = np.unique(np.array(list(map(itemgetter(1), index_list))))
-        action_params = np.unique(np.array(list(map(itemgetter(2), index_list))))
+        action_params = np.unique(np.array(list(map(itemgetter(2), index_list))), axis=0)
+        original_actions = sum(self.discrete_actions.values(), [])
+        original_actions = np.unique(np.array(original_actions), axis=0)
 
         # First check the finger space.
         if not (len(self.transition_model.columns) == self.n_finger_locations):
@@ -166,7 +192,7 @@ class FingerAgentEnv(AgentEnv):
                               (str(sat_params), str(self.sat_true_list)))
             return False
         # Third check for action space.
-        elif not (len(action_params) == len(self.discrete_actions)):
+        elif not (len(action_params) == len(original_actions)):
             self.logger.debug('Action space mismatch found transition model space is {%d}, current: {%d} ' %
                               (len(action_params), len(self.discrete_actions)))
             return False
@@ -186,13 +212,18 @@ class FingerAgentEnv(AgentEnv):
         :param action: int value for eye movement action taken by agent.
         :return: tuple <next state, reward, done, info>
         """
+        # convert to polar coordinate and set sat desired and action type.
+        self.sat_true = self.discrete_action_space[action][1]
+        self.action_type = self.discrete_action_space[action][2]
+        action = self.discrete_actions[tuple(self.finger_location)][self.discrete_action_space[action][0]]
+
         self.logger.debug("Current finger position: {%s}" % str(self.finger_location))
         self.logger.debug("Taking {%s} move with (x.diff, y.diff) : {%s},  sat {%.2f} and desired sat {%.2f}" %
-                          (self.actions[self.action_type], str(self.discrete_actions[action]),
+                          (self.actions[self.action_type], str(action),
                            self.sat_true_list[self.sat_true], self.sat_desired_list[self.sat_desired]))
 
         # take action.
-        _, movement_time = self.move_finger(action, self.sat_desired_list[self.sat_desired])
+        _, movement_time = self.move_finger(action, self.sat_true_list[self.sat_true])
 
         # for acting what was the reward.
         reward, peck = self.reward(action, movement_time)
@@ -200,19 +231,17 @@ class FingerAgentEnv(AgentEnv):
         # Update the finger location probability with the new location after movement.
         self.update_finger_loc_prob(action)
 
-        # if random sampling enabled select randomly next sat, sat_desired, action type and vision status randomly.
-        if self.random_sample:
-            # Randomly choose if model has eyes or not.
-            self.vision_status = np.random.choice([True, False])
+        # Update vision status.
+        if not self.vision_status and self.proofread_duration > 0.0:
+            self.proofread_duration -= movement_time
+        else:
+            self.vision_status = np.random.choice([True, False])  # eyes are on keyboard or not (proofreading).
+            self.proofread_duration = self.sample_fixation_duration()  # if proofreading then for how long?
 
-            # Choose a random sat value for next action.
-            self.sat_true = self.sat_true_list.index(np.random.choice(self.sat_true_list))
-
-            # Choose a random action type for next action.
-            self.action_type = self.actions.index(np.random.choice(self.actions))
-
+        # if random sampling enabled select randomly next sat_desired.
+        # if self.random_sample:
             # Choose a random sat desired value for next action.
-            self.sat_desired = self.sat_desired_list.index(np.random.choice(self.sat_desired_list))
+            # self.sat_desired = self.sat_desired_list.index(np.random.choice(self.sat_desired_list))
 
         self.calc_max_finger_loc()
 
@@ -241,38 +270,49 @@ class FingerAgentEnv(AgentEnv):
         self.target = self.device.get_random_key()
         self.logger.debug("Target key for the trial set to: {%s}" % self.target)
         self.model_time = 0.0
-        self.action_type = self.actions.index(np.random.choice(self.actions))
-        self.vision_status = np.random.choice([True, False])
+        self.hit = 0.0
+        self.dist = 0.0
+        self.vision_status = np.random.choice([True, False])  # eyes are on keyboard or not (proofreading).
+        self.proofread_duration = self.sample_fixation_duration()  # if proofreading then for how long?
         self.init_finger_location_prob()
         self.sat_desired = self.sat_desired_list.index(np.random.choice(self.sat_desired_list))
-        self.sat_true = self.sat_true_list.index(np.random.choice(self.sat_true_list))
         self.calc_max_finger_loc()
         self.set_belief()
         return self.preprocess_belief()
+
+    def sample_fixation_duration(self):
+        """
+        Get a random fixation duration.
+        :return:
+        """
+        if not self.vision_status:
+            return np.random.normal(self.proofread_duration_mean, self.proofread_duration_sd, 1)[0]
+        else:
+            return 0.0
 
     def reward(self, action, movement_time):
         """
         Function for calculating R(a) = 𝜎 · ℎ · p − 𝑚𝑡, where ℎ=1 if the finger model
         presses the requested target, otherwise ℎ=0 and p=1 if the finger model took peck action,
         otherwise p=0.
-        :param action: int value for eye movement action taken by agent.
+        :param action: tuple for finger movement action taken by agent.
         :param movement_time: movement time in seconds for taking action.
         :return: reward: float value to denote goodness of action and action type
         """
         peck_action = 1 if self.action_type == 1 else 0
 
-        hit = 1 if self.is_target() else 0
+        self.hit = 1 if self.is_target() else 0
 
-        reward = (self.task_reward * peck_action * self.sat_desired_list[self.sat_desired] * hit) - movement_time
+        reward = (self.sat_desired_list[self.sat_desired] * self.task_reward * peck_action * self.hit) - movement_time
 
-        if peck_action == 1 and hit == 0:
+        if peck_action == 1 and self.hit == 0:
             self.logger.debug("Pressed key {%s}, but target is {%s}" %
                               (self.device.get_character(self.finger_location[0], self.finger_location[1]),
                                self.target[0]))
-        elif peck_action == 1 and hit == 1:
+        elif peck_action == 1 and self.hit == 1:
             self.logger.debug("Pressed the correct key.")
 
-        self.logger.debug("reward for taking action %d is %.2f" % (action, reward))
+        self.logger.debug("reward for taking action %s is %.2f" % (str(action), reward))
 
         return reward, peck_action
 
@@ -292,12 +332,14 @@ class FingerAgentEnv(AgentEnv):
         :return: new finger location and movement time in seconds.
         """
         # calculate the movement time.
-        delta_coord = self.discrete_actions[action]
-        new_finger_loc = [self.finger_location[0] + delta_coord[0], self.finger_location[1] + delta_coord[1]]
-        dist = distance(self.finger_location, new_finger_loc)
-        dist = self.device.convert_to_meters(dist)
-        self.logger.debug("Distance to move (in meters): %.2f" % dist)
-        movement_time = WHo_mt(dist, sigma)
+        new_finger_loc = [self.finger_location[0] + action[0], self.finger_location[1] + action[1]]
+        self.dist = distance(self.finger_location, new_finger_loc)
+        self.dist = self.device.convert_to_meters(self.dist)
+        self.logger.debug("Distance to move (in meters): %.2f" % self.dist)
+        movement_time = WHo_mt(self.dist, sigma)
+        if self.action_type == 1:
+            # if peck add motor movement time for response
+            movement_time += 0.15
         self.update_model_time(movement_time * 1000)
         self.logger.debug("took %f seconds to move finger." % movement_time)
         new_loc = self.update_sensor_position(action, sigma)
@@ -326,10 +368,9 @@ class FingerAgentEnv(AgentEnv):
         else:
             e2 = 0
 
-        delta_coord = self.discrete_actions[action]
         # calculating new location
-        new_loc_0 = self.finger_location[0] + delta_coord[0] + e1
-        new_loc_1 = self.finger_location[1] + delta_coord[1] + e2
+        new_loc_0 = self.finger_location[0] + action[0] + e1
+        new_loc_1 = self.finger_location[1] + action[1] + e2
 
         # checking upper and lower bounds for y = (0,3)
         new_loc_0 = int(np.clip(new_loc_0, 0, self.device.layout.shape[0] - 1))
@@ -368,31 +409,25 @@ class FingerAgentEnv(AgentEnv):
         self.calc_finger_loc_entropy()
 
         self.belief_state = [np.where(self.device.keys == self.target[0])[0][0], self.max_finger_loc, self.sat_desired,
-                             self.sat_true, self.action_type, self.finger_loc_entropy]
+                             self.finger_loc_entropy]
         self.logger.debug(
             "current belief state is target key : {%s}, max finger location : {%s}, SAT desired : {%.2f}, "
-            "true SAT : {%.2f}, action type : {%s}, entropy : {%.2f}" % (str(self.target[0]),
-                                                                         str(self.max_finger_loc),
-                                                                         self.sat_desired_list[self.sat_desired],
-                                                                         self.sat_true_list[self.sat_true],
-                                                                         str(self.actions[self.action_type]),
-                                                                         self.finger_loc_entropy))
+            "entropy : {%.2f}" % (str(self.target[0]),
+                                  str(self.max_finger_loc),
+                                  self.sat_desired_list[self.sat_desired],
+                                  self.finger_loc_entropy))
 
     def preprocess_belief(self):
         """
         Function to preprocess belief state for neural network input.
         :return:
         """
-        #one_hot_target = np.eye(len(self.device.keys))[self.belief_state[0]]
-        #one_hot_finger_loc = np.eye(self.n_finger_locations)[self.belief_state[1]]
-        #one_hot_sat_desired = np.eye(len(self.sat_desired_list))[self.belief_state[2]]
-        #one_hot_sat_true = np.eye(len(self.sat_true_list))[self.belief_state[3]]
-        #state = np.concatenate((one_hot_target, one_hot_finger_loc, one_hot_sat_desired, one_hot_sat_true,
-        #                        [self.belief_state[4]], [self.belief_state[5]]))
+        one_hot_target = np.eye(len(self.device.keys))[self.belief_state[0]]
+        one_hot_finger_loc = np.eye(self.n_finger_locations)[self.belief_state[1]]
+        state = np.concatenate((one_hot_target, one_hot_finger_loc, [self.sat_desired_list[self.belief_state[2]]],
+                                [self.belief_state[3]]))
 
-        #self.logger.debug("Pre-processed belief state to one-hot encoded vector of size {%s}" % str(state.shape))
-
-        state = np.asarray(self.belief_state)
+        self.logger.debug("Pre-processed belief state to one-hot encoded vector of size {%s}" % str(state.shape))
 
         return state.astype(np.float32)
 
@@ -402,7 +437,7 @@ class FingerAgentEnv(AgentEnv):
         """
         coord = self.device.get_coordinate(self.target[0])
 
-        if self.finger_location[0] in coord[0] and self.finger_location[1] in coord[1]:
+        if self.finger_location[0] in coord[0] and self.finger_location[1] in coord[1] and self.action_type == 1:
             return True
         else:
             return False
@@ -426,7 +461,7 @@ class FingerAgentEnv(AgentEnv):
         updated_belief = updated_belief.sum(axis=0)
 
         if self.vision_status:
-            # if eyes are present at the finger location.
+            # if eyes are present on the keyboard.
             # b`(s_) = O(s,a,o) Σs∈S T(s,a,s_)*b(s)
             self.logger.debug('vision is present re-calculating posterior probability with observation probability '
                               'from vision')
