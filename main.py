@@ -1,6 +1,7 @@
 import sys
 import yaml
 import numpy
+import random
 import logging
 import argparse
 from os import path, makedirs
@@ -11,6 +12,8 @@ from src.utilities.logging_config_manager import setup_logging
 from src.display.touchscreendevice import TouchScreenDevice
 from src.vision.vision_agent import VisionAgent
 from src.finger.finger_agent import FingerAgent
+from src.proofread.proofread_agent import ProofreadAgent
+from src.supervisor.supervisor_agent import SupervisorAgent
 
 parser = argparse.ArgumentParser()
 
@@ -31,6 +34,7 @@ args = parser.parse_args()
 
 # Initialise random seed.
 numpy.random.seed(args.seed)
+random.seed(args.seed)
 
 # Setup Logger.
 if not path.isdir("logs"):
@@ -69,6 +73,16 @@ if args.train:
         finger_agent = FingerAgent(config_file['device_config'], train_config['finger'], True)
         finger_agent.train(finger_agent.episodes)
 
+    if args.proofread or args.all:
+        logger.info("Initiating Proofread Agent Training.")
+        proofread_agent = ProofreadAgent(config_file['device_config'], train_config['proofread'])
+        proofread_agent.train(proofread_agent.episodes)
+
+    if args.supervisor or args.all:
+        logger.info("Initiating Supervisor Agent Training.")
+        supervisor_agent = SupervisorAgent(config_file['device_config'], train_config, True)
+        supervisor_agent.train(supervisor_agent.episodes)
+
 else:
     if path.exists(path.join("configs", config_file['testing_config'])):
         with open(path.join("configs", config_file['testing_config']), 'r') as file:
@@ -87,4 +101,10 @@ else:
     if args.finger or args.all:
         logger.info("Initiating Finger Agent Evaluation.")
         finger_agent = FingerAgent(config_file['device_config'], test_config['finger'], False)
-        finger_agent.evaluate(args.type, test_config['finger']['typing_accuracy'])
+        finger_agent.evaluate(args.type, sat_desired=test_config['finger']['typing_accuracy'])
+
+    if args.supervisor or args.all:
+        logger.info("Initiating Supervisor Agent Evaluation.")
+        supervisor_agent = SupervisorAgent(config_file['device_config'], test_config, False)
+        supervisor_agent.evaluate(args.type)
+
