@@ -44,6 +44,7 @@ class SupervisorEnvironment(AgentEnv):
         self.actions = agent_params['supervisor']['action_type']
         self.sat_desired = agent_params['supervisor']['sat_desired']
         self.found_reward = agent_params['supervisor']['reward']
+        self.agent_id = 0
         self.eye_loc = None
         self.prev_eye_loc = None
         self.finger_loc = None
@@ -73,21 +74,23 @@ class SupervisorEnvironment(AgentEnv):
         self.immediate_backspace_freq = 0
         self.delay_backspace_freq = 0
         self.finger_travel_dist = 0
+        self.saccade_time = 0
+        self.encoding_time = 0
         self.eye_test_data = []
         self.finger_test_data = []
         self.sentence_test_data = []
+        self.fixation_duration = []
         self.train = train
         self.belief_state = None
         if not self.train:
             self.eye_test_data.append(["model time", "eyeloc x", "eyeloc y", "action x", "action y", "type"])
             self.finger_test_data.append(["model time", "fingerloc x", "fingerloc y", "action x", "action y", "type"])
-            self.sentence_test_data.append(["sentence_id", "sentence", "wpm", "err_lev_dist", "gaze_shift_kb_to_txt",
-                                            "n_backspace", "immediate_backspace", "delay_backspace",
-                                            "proportion_gaze_kb", "n_fixations_freq", "finger_travel_dist"])
 
-            data = pd.read_csv(path.join("data", "user_data", "sentences.txt"), sep=",")
+            data = pd.read_csv(path.join("data", "user_data", agent_params['supervisor']['corpus']), sep=",")
             # assuming the 1st column will always be sentence id
             self.sentences_id = data.iloc[:, 0].values
+            self.sentences = list(data.iloc[:, 1].values)
+            self.sentences_bkp = self.sentences.copy()
         else:
             data = pd.read_csv(path.join("data", "user_data", "train_corpus.csv"), sep=",")
             self.sentences = list(data.iloc[:, 0].values)
@@ -111,14 +114,19 @@ class SupervisorEnvironment(AgentEnv):
         self.prev_eye_loc = self.eye_loc
         (mt_enc, mt_exec, mt_enc_l), self.mt, self.eye_loc, _ = self.vision_agent.type_char(char, self.eye_loc)
         self.n_fixations_freq += 1
+
+        self.fixation_duration.append(self.eye_model_time - self.saccade_time)
+
         self.eye_model_time += (self.mt * 1000)
+
+        self.saccade_time = round(self.eye_model_time - (mt_enc_l * 1000), 4)
 
         if not self.train:
             self.eye_test_data.append(
-                [round(self.eye_model_time - mt_enc_l - mt_exec + 50, 4), self.prev_eye_loc[0],
+                [round(self.eye_model_time - (mt_enc_l*1000) - (mt_exec*1000) + 50, 4), self.prev_eye_loc[0],
                  self.prev_eye_loc[1], "", "", 'encoding'])
             self.eye_test_data.append(
-                [round(self.eye_model_time - mt_enc_l, 4), self.prev_eye_loc[0], self.prev_eye_loc[1],
+                [round(self.eye_model_time - (mt_enc_l*1000), 4), self.prev_eye_loc[0], self.prev_eye_loc[1],
                  self.eye_loc[0], self.eye_loc[1], 'saccade'])
             if mt_enc_l > 0:
                 self.eye_test_data.append(
@@ -174,6 +182,7 @@ class SupervisorEnvironment(AgentEnv):
         else:
             # pressed enter key. this is terminal state.
             self.typed += letter
+            self.typed_detailed += letter
             self.is_terminal = True
 
     def step(self, action):
@@ -292,15 +301,23 @@ class SupervisorEnvironment(AgentEnv):
         if self.is_terminal and not self.train:
             # log sentence level data.
             self.logger.debug("typed: %s" % self.typed)
-            index = self.sentences.index(self.sentence_to_type[:-1])
+            index = self.sentences_bkp.index(self.sentence_to_type[:-1])
+            corrected = 0
+            uncorrected = 0
+            if self.typed == self.sentence_to_type and self.n_back_space_freq > 0:
+                corrected = 1
+
+            if not (self.typed == self.sentence_to_type):
+                uncorrected = 1
+
             wpm = ((len(self.typed) - 1) / 5.0) / (self.finger_model_time / 60000.0)
             err_lev_dist = lev.distance(self.sentence_to_type, self.typed)
             proportion_gaze_kb = self.eye_on_kb_time / self.eye_model_time
-            line = [self.sentences_id[index], self.sentence_to_type, wpm, err_lev_dist,
+            iki = self.finger_model_time/len(self.typed_detailed)
+            line = [self.sentences_id[index], self.agent_id, self.sentence_to_type, wpm, err_lev_dist,
                     self.gaze_shift_kb_to_txt_freq, self.n_back_space_freq, self.immediate_backspace_freq,
                     self.delay_backspace_freq, proportion_gaze_kb, self.n_fixations_freq,
-                    self.finger_travel_dist]
-            print(line)
+                    self.finger_travel_dist*100, iki, corrected, uncorrected, np.mean(self.fixation_duration)]
             self.sentence_test_data.append(line)
 
         return self.belief_state, reward, self.is_terminal, {}
@@ -340,10 +357,17 @@ class SupervisorEnvironment(AgentEnv):
         self.delay_backspace_freq = 0
         self.n_fixations_freq = 0
         self.finger_travel_dist = 0
+        self.saccade_time = 0
+        self.encoding_time = 0
+        self.fixation_duration.clear()
 
         self.proofread_agent.env.set_belief()
         self.proofread_q = self.proofread_agent.get_q_value()
-        self.sentence_to_type = random.choice(self.sentences)
+        if self.train:
+            self.sentence_to_type = random.choice(self.sentences)
+        else:
+            self.sentence_to_type = self.sentences.pop(0)
+
         self.sentence_to_type += '>'
         self.logger.debug('typing: %s' % self.sentence_to_type)
         self.line = self.sentence_to_type

@@ -1,8 +1,11 @@
 import csv
 import tqdm
+import random
 import logging
 import numpy as np
+import pandas as pd
 from os import path
+from datetime import datetime
 
 import chainer
 import chainerrl
@@ -25,7 +28,11 @@ class SupervisorAgent(Agent):
     def __init__(self, layout_config, agent_params, train):
         self.logger = logging.getLogger(__name__)
 
-        self.env = SupervisorEnvironment(layout_config, agent_params, train)
+        self.layout_config = layout_config
+        self.agent_params = agent_params
+        self.train = train
+
+        self.env = SupervisorEnvironment(self.layout_config, self.agent_params, self.train)
 
         optimizer_name = 'Adam' if agent_params is None else agent_params['supervisor']['optimizer_name']
         lr = 0.001 if agent_params is None else agent_params['supervisor']['learning_rate']
@@ -109,37 +116,93 @@ class SupervisorAgent(Agent):
             logger=self.logger,
             outdir=self.save_path)  # Save everything to 'supervisor' directory
 
-    def evaluate(self, sentence, **kwargs):
+    def evaluate(self, sentence, batch, n_users, **kwargs):
         """
         Function to evaluate trained agent.
         :param sentence: sentence to type.
+        :param batch: run evaluation in batch mode.
+        :param n_users: number of users to simulate.
         """
 
         done = False
         if not (sentence == "" or sentence is None):
             self.env.sentences = [sentence]
-        state = self.env.reset()
-        while not done:
-            action = self.agent.act(state)
-            state, reward, done, info = self.env.step(action)
-            print(done)
+            self.env.sentences_bkp = [sentence]
 
-        with open(path.join("data", "output", "SupervisorAgent_vision_test.csv"), "w", newline="") as f:
-            writer = csv.writer(f)
-            writer.writerows(self.env.eye_test_data)
+        if batch:
+            sentence_agg_data = [["sentence.id", "agent.id", "target.sentence", "wpm", "lev.distance",
+                                  "gaze.shift", "bs", "immediate.bs", "delayed.bs",
+                                  "gaze.keyboard.ratio", "fix.count", "finger.travel", "iki", "correct.error",
+                                  "uncorrected.error", "fix.duration"]]
+            for i in tqdm.tqdm(range(n_users)):
 
-        with open(path.join("data", "output", "SupervisorAgent_finger_test.csv"), "w", newline="") as f:
-            writer = csv.writer(f)
-            writer.writerows(self.env.finger_test_data)
+                self.env = SupervisorEnvironment(self.layout_config, self.agent_params, self.train)
+                self.env.agent_id = i
 
-        with open(path.join("data", "output", "SupervisorAgent_sentence_test.csv"), "w", newline="") as f:
-            writer = csv.writer(f)
-            writer.writerows(self.env.sentence_test_data)
+                # reinitialise random seed.
+                np.random.seed(datetime.now().microsecond)
+                random.seed(datetime.now().microsecond)
 
-        # TODO: This is from legacy code. Need to update.
-        visualise_agent(True, True, path.join("data", "output", "SupervisorAgent_vision_test.csv"),
-                        path.join("data", "output", "SupervisorAgent_finger_test.csv"),
-                        path.join("data", "output", "SupervisorAgent.mp4"))
+                while len(self.env.sentences) > 0:
+                    state = self.env.reset()
+                    done = False
+                    while not done:
+                        action = self.agent.act(state)
+                        state, reward, done, info = self.env.step(action)
+
+                sentence_agg_data += self.env.sentence_test_data
+
+            with open(path.join("data", "output", "SupervisorAgent_sentence_test.csv"), "w", newline="",
+                      encoding='utf-8') as f:
+                writer = csv.writer(f)
+                writer.writerows(sentence_agg_data)
+        else:
+            self.env.sentence_test_data.append(["sentence.id", "agent.id", "target.sentence", "wpm", "lev.distance",
+                                                "gaze.shift", "bs", "immediate.bs", "delayed.bs",
+                                                "gaze.keyboard.ratio", "fix.count", "finger.travel", "iki"])
+            state = self.env.reset()
+            while not done:
+                action = self.agent.act(state)
+                state, reward, done, info = self.env.step(action)
+
+            with open(path.join("data", "output", "SupervisorAgent_vision_test.csv"), "w", newline="") as f:
+                writer = csv.writer(f)
+                writer.writerows(self.env.eye_test_data)
+
+            with open(path.join("data", "output", "SupervisorAgent_finger_test.csv"), "w", newline="") as f:
+                writer = csv.writer(f)
+                writer.writerows(self.env.finger_test_data)
+
+            with open(path.join("data", "output", "SupervisorAgent_sentence_test.csv"), "w", newline="",
+                      encoding='utf-8') as f:
+                writer = csv.writer(f)
+                writer.writerows(self.env.sentence_test_data)
+
+            # TODO: This is from legacy code. Need to update.
+            visualise_agent(True, True, path.join("data", "output", "SupervisorAgent_vision_test.csv"),
+                            path.join("data", "output", "SupervisorAgent_finger_test.csv"),
+                            path.join("data", "output", "SupervisorAgent.mp4"))
+
+        self.save_senetence_agg_data(path.join("data", "output", "SupervisorAgent_sentence_test.csv"))
+        self.save_user_agg_data(path.join("data", "output", "SupervisorAgent_sentence_test.csv"))
+
+    def save_senetence_agg_data(self, filename):
+        """
+        generates sentence level aggregate data.
+        :param filename: raw data file path.
+        """
+        data = pd.read_csv(filename, sep=',', encoding='utf-8')
+        data = data.groupby("target.sentence").agg(['mean', 'std'])
+        data.to_csv(path.join("data", "output", "SupervisorAgent_sentence_aggregate.csv"), encoding='utf-8')
+
+    def save_user_agg_data(self, filename):
+        """
+        generates user level aggregate data.
+        :param filename: raw data file path.
+        """
+        data = pd.read_csv(filename, sep=',', encoding='utf-8')
+        data = data.groupby("agent.id").agg(['mean', 'std'])
+        data.to_csv(path.join("data", "output", "SupervisorAgent_user_aggregate.csv"), encoding='utf-8')
 
 
 class ProgressBar(chainerrl.experiments.hooks.StepHook):

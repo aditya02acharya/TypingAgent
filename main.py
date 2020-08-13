@@ -28,6 +28,8 @@ parser.add_argument("--train", action="store_true", default=False, help="run mod
 parser.add_argument("--config", required=True, help="name of the configuration file (REQUIRED)")
 parser.add_argument("--seed", type=int, default=datetime.now().microsecond, help="random seed default: current time")
 parser.add_argument("--type", default=">", help="sentence to type for the agent.")
+parser.add_argument("--batch", action="store_true", default=False, help="evaluate a batch of sentences.")
+parser.add_argument("--users", type=int, default=1, help="number of users to simulate")
 
 # get user command line arguments.
 args = parser.parse_args()
@@ -106,5 +108,5 @@ else:
     if args.supervisor or args.all:
         logger.info("Initiating Supervisor Agent Evaluation.")
         supervisor_agent = SupervisorAgent(config_file['device_config'], test_config, False)
-        supervisor_agent.evaluate(args.type)
+        supervisor_agent.evaluate(args.type, args.batch, args.users)
 

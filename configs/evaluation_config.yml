@@ -63,3 +63,4 @@ supervisor:
   pre_load: True
   gpu: False
   save_path: 'data/models/supervisor'
+  corpus: 'sentences.txt'
