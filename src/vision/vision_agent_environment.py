@@ -44,7 +44,7 @@ class VisionAgentEnv(AgentEnv):
     def update_model_time(self, delta):
         """
         Function to update model runtime.
-        :param delta: time to increment in sec.
+        :param delta: time to increment in ms.
         """
         self.model_time += delta
 
@@ -57,7 +57,7 @@ class VisionAgentEnv(AgentEnv):
         self.logger.debug("taking action {%d}" % action)
 
         # take action.
-        _, movement_time = self.move_eyes(action)
+        _, movement_time, _ = self.move_eyes(action)
 
         # for acting what was the reward.
         reward = self.reward(action, movement_time)
@@ -111,7 +111,8 @@ class VisionAgentEnv(AgentEnv):
         """
         function to make eye movement. Uses EMMA to calculate movement time.
         :param action: int value for eye movement action taken by agent.
-        :return: movement time in seconds.
+        :return: emma tuple and movement time in seconds.
+        :return: moved did eyes move.
         """
 
         coord = self.device.convert_to_ij(action)
@@ -130,7 +131,7 @@ class VisionAgentEnv(AgentEnv):
 
         self.prev_eye_loc = self.eye_location
         self.update_model_time(movement_time * 1000)
-        return (mt_enc*1000, mt_exec*1000, mt_enc_l*1000), movement_time
+        return (mt_enc, mt_exec, mt_enc_l), movement_time, moved
 
     def render(self, mode='human'):
         """

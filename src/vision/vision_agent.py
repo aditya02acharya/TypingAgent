@@ -96,10 +96,10 @@ class VisionAgent(Agent):
         self.env.target = char
         self.env.set_belief()
         a = int(self.agent.choose_action(self.env.belief_state))
-        (mt_enc, mt_exec, mt_enc_l), mt = self.env.move_eyes(a)
+        (mt_enc, mt_exec, mt_enc_l), mt, moved = self.env.move_eyes(a)
         coord = self.env.device.convert_to_ij(a)
 
-        return (mt_enc, mt_exec, mt_enc_l), mt, self.env.eye_location, coord
+        return (mt_enc, mt_exec, mt_enc_l), mt, self.env.eye_location, coord, moved
 
     def type_sentence(self, sentence):
         """
@@ -122,10 +122,10 @@ class VisionAgent(Agent):
             (_, mt_exec, mt_enc_l), mt, _, action = self.type_char(char, self.env.eye_location)
 
             test_data.append(
-                [round(self.env.model_time - mt_enc_l - mt_exec + 50, 4), self.env.prev_eye_loc[0],
+                [round(self.env.model_time - mt_enc_l*1000 - mt_exec*1000 + 50, 4), self.env.prev_eye_loc[0],
                  self.env.prev_eye_loc[0], "", "", 'encoding'])
             test_data.append(
-                [round(self.env.model_time - mt_enc_l, 4), self.env.eye_location[0], self.env.eye_location[1],
+                [round(self.env.model_time - mt_enc_l*1000, 4), self.env.eye_location[0], self.env.eye_location[1],
                  action[0], action[1], 'saccade'])
 
             if mt_enc_l > 0:

@@ -89,7 +89,7 @@ class FingerAgentEnv(AgentEnv):
     def update_model_time(self, delta):
         """
         Function to update model runtime.
-        :param delta: time to increment in sec.
+        :param delta: time to increment in ms.
         """
         self.model_time += delta
 
@@ -338,9 +338,9 @@ class FingerAgentEnv(AgentEnv):
         self.dist = self.device.convert_to_meters(self.dist)
         self.logger.debug("Distance to move (in meters): %.2f" % self.dist)
         movement_time = WHo_mt(self.dist, sigma)
-        if self.action_type == 1:
+        #if self.action_type == 1:
             # if peck add motor movement time for response
-            movement_time += 0.15
+        #    movement_time += 0.15
         self.update_model_time(movement_time * 1000)
         self.logger.debug("took %f seconds to move finger." % movement_time)
         new_loc = self.update_sensor_position(action, sigma)

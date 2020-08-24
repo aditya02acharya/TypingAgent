@@ -102,18 +102,23 @@ class SupervisorEnvironment(AgentEnv):
     def update_model_time(self, delta):
         """
         Function to update model runtime.
-        :param delta: time to increment in sec.
+        :param delta: time to increment in ms.
         """
         self.model_time += delta
 
     def make_eye_movement(self, char):
         """
         Function to perform eye movement from current position to target char.
+        :param char: target character to move eyes to.
+        :return movement time in seconds.
         """
 
         self.prev_eye_loc = self.eye_loc
-        (mt_enc, mt_exec, mt_enc_l), self.mt, self.eye_loc, _ = self.vision_agent.type_char(char, self.eye_loc)
-        self.n_fixations_freq += 1
+        # movement values are in seconds. But, for visualisation we use ms. Converting everything here.
+        (mt_enc, mt_exec, mt_enc_l), self.mt, self.eye_loc, _, moved = self.vision_agent.type_char(char, self.eye_loc)
+
+        if moved:
+            self.n_fixations_freq += 1
 
         self.fixation_duration.append(self.eye_model_time - self.saccade_time)
 
