@@ -21,18 +21,24 @@ from chainer.backends import cuda
 from src.abstract.agent import Agent
 from src.visualise.visualise import visualise_agent
 from src.supervisor.supervisor_agent_environment import SupervisorEnvironment
+from src.supervisor.supervisor_agent_two_finger_env import SupervisorEnvironment_
 
 
 class SupervisorAgent(Agent):
 
-    def __init__(self, layout_config, agent_params, train):
+    def __init__(self, layout_config, agent_params, train, finger_two, verbose=False):
         self.logger = logging.getLogger(__name__)
 
         self.layout_config = layout_config
         self.agent_params = agent_params
-        self.train = train
+        self.train_model = train
+        self.finger_two = finger_two
+        self.verbose = verbose
 
-        self.env = SupervisorEnvironment(self.layout_config, self.agent_params, self.train)
+        if finger_two:
+            self.env = SupervisorEnvironment_(self.layout_config, self.agent_params, self.train_model)
+        else:
+            self.env = SupervisorEnvironment(self.layout_config, self.agent_params, self.train_model)
 
         optimizer_name = 'Adam' if agent_params is None else agent_params['supervisor']['optimizer_name']
         lr = 0.001 if agent_params is None else agent_params['supervisor']['learning_rate']
@@ -93,7 +99,11 @@ class SupervisorAgent(Agent):
 
         if train:
             chainer.config.train = True
-            # self.pbar = tqdm.tqdm(total=self.episodes)
+            #if self.verbose:
+            #    self.pbar = tqdm.tqdm(total=self.episodes, ascii=True,
+            #                     bar_format='{l_bar}{n}, {remaining}\n')
+            #else:
+            #    self.pbar = tqdm.tqdm(total=self.episodes)
         else:
             chainer.config.train = False
             self.agent.act_deterministically = False
@@ -134,9 +144,17 @@ class SupervisorAgent(Agent):
                                   "gaze.shift", "bs", "immediate.bs", "delayed.bs",
                                   "gaze.keyboard.ratio", "fix.count", "finger.travel", "iki", "correct.error",
                                   "uncorrected.error", "fix.duration"]]
-            for i in tqdm.tqdm(range(n_users)):
+            if self.verbose:
+                iter = tqdm.tqdm(iterable=range(n_users), ascii=True,
+                                 bar_format='{l_bar}{n}, {remaining}\n')
+            else:
+                iter = tqdm.tqdm(range(n_users))
+            for i in iter:
 
-                self.env = SupervisorEnvironment(self.layout_config, self.agent_params, self.train)
+                if self.finger_two:
+                    self.env = SupervisorEnvironment_(self.layout_config, self.agent_params, self.train_model)
+                else:
+                    self.env = SupervisorEnvironment(self.layout_config, self.agent_params, self.train_model)
                 self.env.agent_id = i
 
                 # reinitialise random seed.
@@ -156,6 +174,19 @@ class SupervisorAgent(Agent):
                       encoding='utf-8') as f:
                 writer = csv.writer(f)
                 writer.writerows(sentence_agg_data)
+
+            with open(path.join("data", "output", "SupervisorAgent_Vision_Viz.csv"), "w", newline="") as f:
+                writer = csv.writer(f)
+                writer.writerows(self.env.eye_viz_log)
+
+            with open(path.join("data", "output", "SupervisorAgent_Finger_Viz.csv"), "w", newline="") as f:
+                writer = csv.writer(f)
+                writer.writerows(self.env.finger_viz_log)
+
+            with open(path.join("data", "output", "SupervisorAgent_Typing_Viz.csv"), "w", newline="") as f:
+                writer = csv.writer(f)
+                writer.writerows(self.env.typing_viz_log)
+
         else:
             self.env.sentence_test_data.append(["sentence.id", "agent.id", "target.sentence", "wpm", "lev.distance",
                                                 "gaze.shift", "bs", "immediate.bs", "delayed.bs",

@@ -11,13 +11,13 @@ import pandas as pd
 import Levenshtein as lev
 
 from src.abstract.environment import AgentEnv
+from src.finger_proxy.proxy_agent import ProxyAgent
 from src.vision.vision_agent import VisionAgent
-from src.finger.finger_agent import FingerAgent
 from src.proofread.proofread_agent import ProofreadAgent
 from src.display.touchscreendevice import TouchScreenDevice
 
 
-class SupervisorEnvironment(AgentEnv):
+class SupervisorEnvironment_(AgentEnv):
 
     def __init__(self, layout_config, agent_params, train):
 
@@ -38,7 +38,7 @@ class SupervisorEnvironment(AgentEnv):
             self.device = None
 
         self.vision_agent = VisionAgent(layout_config, agent_params['vision'])
-        self.finger_agent = FingerAgent(layout_config, agent_params['finger'], 0, False)
+        self.finger_agent = ProxyAgent(layout_config, agent_params['finger'], False)
         self.proofread_agent = ProofreadAgent(layout_config, agent_params['proofread'])
 
         self.actions = agent_params['supervisor']['action_type']
@@ -80,23 +80,16 @@ class SupervisorEnvironment(AgentEnv):
         self.finger_test_data = []
         self.sentence_test_data = []
         self.fixation_duration = []
-        self.eye_viz_log = []
-        self.finger_viz_log = []
-        self.typing_viz_log = []
         self.train = train
         self.belief_state = None
         if not self.train:
             self.eye_test_data.append(["model time", "eyeloc x", "eyeloc y", "action x", "action y", "type"])
             self.finger_test_data.append(["model time", "fingerloc x", "fingerloc y", "action x", "action y", "type"])
-            self.eye_viz_log.append(['subject_id', 'sentence_n', 'trialtime', 'x', 'y'])
-            self.finger_viz_log.append(['subject_id', 'block', 'sentence_n', 'trialtime', 'x', 'y'])
-            self.typing_viz_log.append(['subject_id', 'sentence_n', 'trialtime', 'event'])
 
             data = pd.read_csv(path.join("data", "user_data", agent_params['supervisor']['corpus']), sep=",")
             # assuming the 1st column will always be sentence id
             self.sentences_id = data.iloc[:, 0].values
             self.sentences = list(data.iloc[:, 1].values)
-            print(len(self.sentences))
             self.sentences_bkp = self.sentences.copy()
         else:
             data = pd.read_csv(path.join("data", "user_data", "train_corpus.csv"), sep=",")
@@ -105,7 +98,6 @@ class SupervisorEnvironment(AgentEnv):
         self.vision_agent.agent.load()
         self.finger_agent.load()
         self.proofread_agent.agent.load()
-        print(len(self.sentences))
 
     def update_model_time(self, delta):
         """
@@ -136,19 +128,14 @@ class SupervisorEnvironment(AgentEnv):
 
         if not self.train:
             self.eye_test_data.append(
-                [round(self.eye_model_time - (mt_enc_l * 1000) - (mt_exec * 1000) + 50, 4), self.prev_eye_loc[0],
+                [round(self.eye_model_time - (mt_enc_l*1000) - (mt_exec*1000) + 50, 4), self.prev_eye_loc[0],
                  self.prev_eye_loc[1], "", "", 'encoding'])
             self.eye_test_data.append(
-                [round(self.eye_model_time - (mt_enc_l * 1000), 4), self.prev_eye_loc[0], self.prev_eye_loc[1],
+                [round(self.eye_model_time - (mt_enc_l*1000), 4), self.prev_eye_loc[0], self.prev_eye_loc[1],
                  self.eye_loc[0], self.eye_loc[1], 'saccade'])
             if mt_enc_l > 0:
                 self.eye_test_data.append(
                     [round(self.eye_model_time, 4), self.eye_loc[0], self.eye_loc[1], "", "", 'late encoding'])
-
-            self.eye_viz_log.append([self.agent_id,
-                                     self.sentences_id[self.sentences_bkp.index(self.sentence_to_type[:-1])],
-                                     round(self.eye_model_time, 4), self.eye_loc[0], self.eye_loc[1]])
-
         return self.mt
 
     def make_finger_movement(self, char, sigma_desired, eye_time):
@@ -156,25 +143,23 @@ class SupervisorEnvironment(AgentEnv):
          Function to perform finger movement from current position to target char.
         """
         finger_time = 0
-        self.mt, _, _, self.finger_q = self.finger_agent.type_char(char, sigma_desired, self.eye_on_keyboard)
-        self.finger_loc = self.finger_agent.env.finger_location
-        self.finger_travel_dist += self.finger_agent.env.dist
+        self.mt, self.finger_q, finger_loc, finger_travel_dist, action_type, agent_type = \
+            self.finger_agent.move(char, sigma_desired, self.eye_on_keyboard)
+        self.finger_loc = finger_loc
+        self.finger_travel_dist += finger_travel_dist
         finger_time += self.mt
 
         # Keep iterating the finger model until a peck is performed and appending the finger data
-        while self.finger_agent.env.action_type == self.finger_agent.env.actions[0]:
+        while action_type == self.finger_agent.agent_right_thumb.env.actions[0]:
             self.finger_model_time += (self.mt * 1000)
             if not self.train:
                 self.finger_test_data.append(
                     [round(self.finger_model_time, 4), self.finger_loc[0], self.finger_loc[1], "", "", "move"])
-                self.finger_viz_log.append([self.agent_id,
-                                            self.sentences_id[self.sentences_bkp.index(self.sentence_to_type[:-1])],
-                                            2, round(self.finger_model_time, 4), self.finger_loc[0],
-                                            self.finger_loc[1]])
 
-            self.mt, _, _, self.finger_q = self.finger_agent.type_char(char, sigma_desired, self.eye_on_keyboard)
-            self.finger_loc = self.finger_agent.env.finger_location
-            self.finger_travel_dist += self.finger_agent.env.dist
+            self.mt, self.finger_q, finger_loc, finger_travel_dist, action_type, agent_type = \
+                self.finger_agent.move(char, sigma_desired, self.eye_on_keyboard)
+            self.finger_loc = finger_loc
+            self.finger_travel_dist += finger_travel_dist
             finger_time += self.mt
 
         self.finger_model_time += (self.mt * 1000)
@@ -182,14 +167,6 @@ class SupervisorEnvironment(AgentEnv):
             self.finger_test_data.append(
                 [round(self.finger_model_time, 4), self.finger_loc[0], self.finger_loc[1], self.finger_loc[0],
                  self.finger_loc[1], "peck"])
-            self.finger_viz_log.append([self.agent_id,
-                                        self.sentences_id[self.sentences_bkp.index(self.sentence_to_type[:-1])],
-                                        2, round(self.finger_model_time, 4), self.finger_loc[0],
-                                        self.finger_loc[1]])
-            self.typing_viz_log.append([self.agent_id,
-                                        self.sentences_id[self.sentences_bkp.index(self.sentence_to_type[:-1])],
-                                        round(self.finger_model_time, 4), 'pressed key'])
-
             # finger waits for eye and eye waits for finger. Next action taken when both have reacted for a target.
             if finger_time > eye_time:
                 self.eye_model_time = self.finger_model_time
@@ -248,10 +225,10 @@ class SupervisorEnvironment(AgentEnv):
             self.make_finger_movement(char, sigma_desired, eye_time)
 
             if not self.is_error:
-                self.is_error = not self.finger_agent.env.hit
+                self.is_error = not self.finger_agent.hit
 
             # update proofread
-            self.update_proofread(self.proofread_agent.env.error_probability_list[self.finger_agent.env.sat_true])
+            self.update_proofread(self.proofread_agent.env.error_probability_list[self.finger_agent.sat_true])
 
         else:
             # EYE MOVEMENT FOR PROOFREADING
@@ -280,9 +257,6 @@ class SupervisorEnvironment(AgentEnv):
                     self.eye_test_data.append(
                         [round(self.eye_model_time, 4), self.eye_loc[0], self.eye_loc[1], "", "",
                          'late encoding'])
-                self.eye_viz_log.append([self.agent_id,
-                                         self.sentences_id[self.sentences_bkp.index(self.sentence_to_type[:-1])],
-                                         round(self.eye_model_time, 4), self.eye_loc[0], self.eye_loc[1]])
 
             # Once proofread. Error prob reset to lowest value.
             self.proofread_agent.env.reset_error_prob()
@@ -292,8 +266,7 @@ class SupervisorEnvironment(AgentEnv):
             # If errors found on proofreading.
             if self.is_error:
                 if len(self.typed) > len(self.sentence_to_type):
-                    indexes = [i for i in range(len(self.sentence_to_type)) if
-                               self.typed[i] != self.sentence_to_type[i]]
+                    indexes = [i for i in range(len(self.sentence_to_type)) if self.typed[i] != self.sentence_to_type[i]]
                 else:
                     indexes = [i for i in range(len(self.typed)) if self.typed[i] != self.sentence_to_type[i]]
                 if len(indexes) > 0:
@@ -344,10 +317,10 @@ class SupervisorEnvironment(AgentEnv):
             if not (self.typed == self.sentence_to_type):
                 uncorrected = 1
 
-            wpm = ((len(self.typed) - 1) / 5.0) / (self.finger_model_time / 60000.0)
+            wpm = ((len(self.typed)) / 5.0) / (self.finger_model_time / 60000.0)
             err_lev_dist = lev.distance(self.sentence_to_type, self.typed)
             proportion_gaze_kb = self.eye_on_kb_time / self.eye_model_time
-            iki = self.finger_model_time / len(self.typed_detailed)
+            iki = self.finger_model_time/len(self.typed_detailed)
             line = [self.sentences_id[index], self.agent_id, self.sentence_to_type, wpm, err_lev_dist,
                     self.gaze_shift_kb_to_txt_freq, self.n_back_space_freq, self.immediate_backspace_freq,
                     self.delay_backspace_freq, proportion_gaze_kb, self.n_fixations_freq,
@@ -369,9 +342,8 @@ class SupervisorEnvironment(AgentEnv):
         self.finger_loc = self.device.start()
         self.logger.debug("Finger initialised to location: {%d, %d}" % (self.finger_loc[0], self.finger_loc[1]))
         self.vision_agent.env.reset()
-        self.finger_agent.env.reset()
+        self.finger_agent.reset()
         self.proofread_agent.env.reset()
-        self.finger_agent.env.finger_location = self.finger_loc
         self.vision_agent.env.eye_location = self.eye_loc
         self.proofread_agent.env.eye_location = self.eye_loc
         self.mt = 0
@@ -428,12 +400,11 @@ class SupervisorEnvironment(AgentEnv):
         if self.steps == 100 and not self.is_terminal:
             # reached max length.
             self.is_terminal = True
-            return np.clip(-movement_time - lev.distance(self.sentence_to_type, self.typed_detailed), -20, 20)
+            return - movement_time - lev.distance(self.sentence_to_type, self.typed_detailed)
         elif not self.is_terminal:
             return 0.0
         else:
-            return np.clip(self.n_chars - movement_time - lev.distance(self.sentence_to_type, self.typed_detailed),
-                           -20, 20)
+            return self.n_chars - movement_time - lev.distance(self.sentence_to_type, self.typed_detailed)
 
     def render(self, mode='human'):
         pass

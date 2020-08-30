@@ -7,6 +7,7 @@ import argparse
 from os import path, makedirs
 from datetime import datetime
 
+from src.finger_proxy.proxy_agent import ProxyAgent
 from src.utilities.logging_config_manager import setup_logging
 
 from src.display.touchscreendevice import TouchScreenDevice
@@ -30,6 +31,8 @@ parser.add_argument("--seed", type=int, default=datetime.now().microsecond, help
 parser.add_argument("--type", default=">", help="sentence to type for the agent.")
 parser.add_argument("--batch", action="store_true", default=False, help="evaluate a batch of sentences.")
 parser.add_argument("--users", type=int, default=1, help="number of users to simulate")
+parser.add_argument("--twofinger", action="store_true", default=False, help="enable typing with two finger.")
+parser.add_argument("--verbose", action="store_true", default=False, help="print tqdm step in new line.")
 
 # get user command line arguments.
 args = parser.parse_args()
@@ -67,22 +70,27 @@ if args.train:
 
     if args.vision or args.all:
         logger.info("Initiating Vision Agent Training.")
-        vision_agent = VisionAgent(config_file['device_config'], train_config['vision'])
+        vision_agent = VisionAgent(config_file['device_config'], train_config['vision'], args.verbose)
         vision_agent.train(vision_agent.episodes)
 
     if args.finger or args.all:
         logger.info("Initiating Finger Agent Training.")
-        finger_agent = FingerAgent(config_file['device_config'], train_config['finger'], True)
+        finger_agent = FingerAgent(config_file['device_config'], train_config['finger'], 0, True, args.verbose)
         finger_agent.train(finger_agent.episodes)
 
     if args.proofread or args.all:
         logger.info("Initiating Proofread Agent Training.")
-        proofread_agent = ProofreadAgent(config_file['device_config'], train_config['proofread'])
+        proofread_agent = ProofreadAgent(config_file['device_config'], train_config['proofread'], args.verbose)
         proofread_agent.train(proofread_agent.episodes)
 
     if args.supervisor or args.all:
         logger.info("Initiating Supervisor Agent Training.")
-        supervisor_agent = SupervisorAgent(config_file['device_config'], train_config, True)
+        if args.twofinger:
+            supervisor_agent = SupervisorAgent(config_file['device_config'], train_config, True, True, args.verbose)
+        else:
+            supervisor_agent = SupervisorAgent(config_file['device_config'], train_config, True, False, args.verbose)
+
+        print(type(supervisor_agent.episodes))
         supervisor_agent.train(supervisor_agent.episodes)
 
 else:
@@ -102,11 +110,14 @@ else:
 
     if args.finger or args.all:
         logger.info("Initiating Finger Agent Evaluation.")
-        finger_agent = FingerAgent(config_file['device_config'], test_config['finger'], False)
+        finger_agent = FingerAgent(config_file['device_config'], test_config['finger'], 0, False)
         finger_agent.evaluate(args.type, sat_desired=test_config['finger']['typing_accuracy'])
 
     if args.supervisor or args.all:
         logger.info("Initiating Supervisor Agent Evaluation.")
-        supervisor_agent = SupervisorAgent(config_file['device_config'], test_config, False)
+        if args.twofinger:
+            supervisor_agent = SupervisorAgent(config_file['device_config'], test_config, False, True, args.verbose)
+        else:
+            supervisor_agent = SupervisorAgent(config_file['device_config'], test_config, False, False, args.verbose)
         supervisor_agent.evaluate(args.type, args.batch, args.users)
 

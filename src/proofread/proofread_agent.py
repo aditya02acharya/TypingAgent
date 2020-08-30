@@ -17,7 +17,7 @@ class ProofreadAgent(Agent):
     def evaluate(self, sentence, **kwargs):
         pass
 
-    def __init__(self, layout_config, agent_params):
+    def __init__(self, layout_config, agent_params, verbose=False):
         self.logger = logging.getLogger(__name__)
 
         self.env = ProofreadAgentEnv(layout_config, agent_params)
@@ -32,6 +32,7 @@ class ProofreadAgent(Agent):
                                     filename='proofread_q_table.csv')
         self.error_list = deque([0], maxlen=1000)
         self.reward_list = deque([0], maxlen=1000)
+        self.verbose = verbose
 
     def train(self, episodes):
         """
@@ -43,7 +44,13 @@ class ProofreadAgent(Agent):
                  "min_td_error", "max_td_error"]
         self.save_log_data(field, "w")
 
-        for ep in tqdm.tqdm(range(episodes)):
+        if self.verbose:
+            iter = tqdm.tqdm(iterable=range(episodes), ascii=True,
+                             bar_format='{l_bar}{n}, {remaining}\n')
+        else:
+            iter = tqdm.tqdm(range(episodes))
+
+        for ep in iter:
             s = self.env.reset()
             done = False
             while not done:

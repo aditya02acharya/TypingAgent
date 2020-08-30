@@ -19,10 +19,10 @@ from src.finger.finger_agent_environment import FingerAgentEnv
 
 class FingerAgent(Agent):
 
-    def __init__(self, layout_config, agent_params, train):
+    def __init__(self, layout_config, agent_params, finger, train, verbose=True):
         self.logger = logging.getLogger(__name__)
 
-        self.env = FingerAgentEnv(layout_config, agent_params, train)
+        self.env = FingerAgentEnv(layout_config, agent_params, finger, train)
 
         # Agent Configuration.
         optimizer_name = 'Adam' if agent_params is None else agent_params['optimizer_name']
@@ -39,6 +39,7 @@ class FingerAgent(Agent):
         self.episodes = 1000000 if agent_params is None else int(agent_params['episodes'])
         self.log_interval = 1000 if agent_params is None else int(agent_params['log_interval'])
         self.log_filename = agent_params['log_file']
+        self.verbose = verbose
 
         self.q_func = QFunction(embed_size=self.env.observation_space.shape[0],
                                 dropout_ratio=dropout_ratio,
@@ -81,7 +82,11 @@ class FingerAgent(Agent):
 
         if train:
             chainer.config.train = True
-            self.pbar = tqdm.tqdm(total=self.episodes)
+            if self.verbose:
+                self.pbar = tqdm.tqdm(total=self.episodes, ascii=True,
+                                 bar_format='{l_bar}{n}, {remaining}\n')
+            else:
+                self.pbar = tqdm.tqdm(total=self.episodes)
         else:
             chainer.config.train = False
             self.behaviour_log = AgentBehaviour("finger")

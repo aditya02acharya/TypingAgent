@@ -16,7 +16,7 @@ from src.utilities.utils import parse_transition_index, distance, WHo_mt
 
 
 class FingerAgentEnv(AgentEnv):
-    def __init__(self, layout_config, agent_params, train):
+    def __init__(self, layout_config, agent_params, finger, train):
         self.logger = logging.getLogger(__name__)
         self.config_file = None
         if path.exists(path.join('configs', layout_config)):
@@ -59,6 +59,7 @@ class FingerAgentEnv(AgentEnv):
         self.model_time = 0.0
         self.hit = 0.0
         self.dist = 0.0
+        self.finger_type = finger
         self.transition_file = agent_params['transition']
         self.transition_sample = agent_params['transition_samples']
         self.transition_model = None
@@ -264,7 +265,7 @@ class FingerAgentEnv(AgentEnv):
         :return: current belief state.
         """
         self.logger.debug("Resetting Environment for start of new trial.")
-        self.finger_location = self.device.start()
+        self.finger_location = self.device.start(self.finger_type)
         self.logger.debug("Finger initialised to location: {%d, %d}" %
                           (self.finger_location[0], self.finger_location[1]))
         self.target = self.device.get_random_key()
@@ -335,8 +336,8 @@ class FingerAgentEnv(AgentEnv):
         # calculate the movement time.
         new_finger_loc = [self.finger_location[0] + action[0], self.finger_location[1] + action[1]]
         self.dist = distance(self.finger_location, new_finger_loc)
-        self.dist = self.device.convert_to_meters(self.dist)
-        self.logger.debug("Distance to move (in meters): %.2f" % self.dist)
+        #self.dist = self.device.convert_to_meters(self.dist)
+        self.logger.debug("Distance to move (in cm): %.2f" % self.dist)
         movement_time = WHo_mt(self.dist, sigma)
         #if self.action_type == 1:
             # if peck add motor movement time for response
