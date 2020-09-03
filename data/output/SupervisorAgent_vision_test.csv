@@ -1,0 +1,7 @@
+model time,eyeloc x,eyeloc y,action x,action y,type
+0,3,6,,,start
+185.0,3,6,,,encoding
+217.5984,3,6,-6,3,saccade
+402.5984,-6,3,,,encoding
+434.3639,-6,3,1,5,saccade
+408.6552,1,5,,,wait
