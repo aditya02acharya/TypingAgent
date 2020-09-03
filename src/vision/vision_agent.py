@@ -127,7 +127,7 @@ class VisionAgent(Agent):
 
         for char in sentence:
             self.env.target = char
-            (_, mt_exec, mt_enc_l), mt, _, action = self.type_char(char, self.env.eye_location)
+            (_, mt_exec, mt_enc_l), mt, _, action, _ = self.type_char(char, self.env.eye_location)
 
             test_data.append(
                 [round(self.env.model_time - mt_enc_l*1000 - mt_exec*1000 + 50, 4), self.env.prev_eye_loc[0],
