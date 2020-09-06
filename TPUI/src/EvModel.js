@@ -58,7 +58,7 @@ class Demo extends Component {
   };
 
   handleClickEvP = () => {
-    var data = { sentence: this.state.sentence };
+    var data = { sentence: this.state.sentence, prev: "evaluation" };
     var path = {
       pathname: "/evaluate/process",
       state: data,

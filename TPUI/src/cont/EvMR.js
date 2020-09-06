@@ -9,17 +9,17 @@ class EvMR extends Component {
   constructor(props) {
     super(props);
     this.state = {
-      sentenceResult: null,
+      sentenceResult: null
     };
   }
 
   // get data from api
   componentDidMount() {
     fetch("/dataG")
-      .then((res) => res.json())
-      .then((data) => {
+      .then(res => res.json())
+      .then(data => {
         this.setState({
-          sentenceResult: data,
+          sentenceResult: data
         });
       });
   }
@@ -45,7 +45,13 @@ class EvMR extends Component {
           />
         </EvCard2>
         <EvCard2 title="Eye Gaze (average per sentence)">
-          {/* <MREye /> */}
+          <MREye
+            sentenceResult={
+              this.state.sentenceResult === null
+                ? null
+                : this.state.sentenceResult
+            }
+          />
         </EvCard2>
       </div>
     );

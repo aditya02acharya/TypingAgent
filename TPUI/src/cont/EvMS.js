@@ -11,13 +11,13 @@ import "../css/Ev/EvMS.less";
 
 class EvMS extends Component {
   state = {
-    value: 1,
+    value: 1
   };
 
-  onChange = (e) => {
+  onChange = e => {
     console.log("radio checked", e.target.value);
     this.setState({
-      value: e.target.value,
+      value: e.target.value
     });
   };
 
@@ -25,19 +25,19 @@ class EvMS extends Component {
     const radioStyle = {
       // display: 'block',
       height: "80px",
-      lineHeight: "30px",
+      lineHeight: "30px"
     };
 
     const style1 = {
       display: "block",
       width: "400px",
-      marginTop: "10px",
+      marginTop: "10px"
     };
 
     const { value } = this.state;
     return (
       <div className="evms">
-        <Radio.Group className="radioG1" onChange={this.onChange} value={value}>
+        {/* <Radio.Group className="radioG1" onChange={this.onChange} value={value}>
           <div className="corpus">
             <Radio style={radioStyle} value={1}>
               Built-in Model
@@ -52,7 +52,11 @@ class EvMS extends Component {
               )}
             </Radio>
           </div>
-        </Radio.Group>
+        </Radio.Group> */}
+        <h4 style={{ marginBottom: "10px", fontWeight: "500" }}>
+          Built-in and Saved Models
+        </h4>
+        <EvMS_S1 />
         <Divider
           style={{ fontSize: "14px", color: "#949494", width: "70%" }}
         ></Divider>

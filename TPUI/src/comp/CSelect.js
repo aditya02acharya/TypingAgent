@@ -19,7 +19,7 @@ class EvCS_S1 extends Component {
         style={{
           display: "block",
           width: "400px",
-          marginTop: "10px",
+          marginTop: "10px"
         }}
       >
         <Option value="E1">English 1</Option>
@@ -54,8 +54,32 @@ class EvCS_S1_d extends Component {
     );
   }
 }
-
+const options = [
+  { value: "S1", label: "aaaa" },
+  { value: "S2" },
+  { value: "S3" },
+  { value: "S4" }
+];
 class EvMS_S1 extends Component {
+  constructor(props) {
+    super(props);
+    this.state = {
+      options: options
+    };
+  }
+
+  componentDidMount() {
+    fetch("/readNames")
+      .then(res => res.json())
+      .then(data => {
+        console.log(data);
+        this.setState({ options: data });
+      });
+    console.log(
+      "Model has been successfully saved. You can resuse it to evaluate now"
+    );
+  }
+
   render() {
     return (
       <Select
@@ -67,14 +91,9 @@ class EvMS_S1 extends Component {
           option.children.toLowerCase().indexOf(input.toLowerCase()) >= 0
         }
         size="large"
+        options={this.state.options}
         style={{ display: "block", width: "400px", marginTop: "10px" }}
-      >
-        <Option value="M1">Default</Option>
-        <Option value="M2">Novice (high error rate)</Option>
-        <Option value="M3">Expert (low error rate)</Option>
-        <Option value="M4">Tremor</Option>
-        <Option value="M5">Dyslexia</Option>
-      </Select>
+      ></Select>
     );
   }
 }

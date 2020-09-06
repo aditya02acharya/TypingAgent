@@ -1,7 +1,7 @@
 import time
 # from flask import Flask, request
 import flask
-from flask import request, Response, render_template
+from flask import request, Response, render_template, jsonify
 
 import os
 import subprocess
@@ -33,8 +33,58 @@ def stream():
 
 
     prefix= "python main.py --all --config config.yml --type \""
-    cmdEvaluation = prefix + sentence + "\""
-    # cmdEvaluation = "python main.py --train --all --config config.yml"
+    cmdEvaluation = prefix + sentence + "\"" + "--verbose"
+    # cmdEvaluation = "python main.py --train --all --config config.yml --verbose"
+
+    def inner():
+        proc = subprocess.Popen(
+            [cmdEvaluation],             #call something with a lot of output so we can see it
+            shell=True,
+            stdout=subprocess.PIPE,
+            universal_newlines=True #!mportant....
+        )
+
+        for line in iter(proc.stdout.readline,''):
+            # time.sleep(1)                           # Don't need this just shows the text streaming
+            print(line.rstrip())
+            yield line.rstrip() + '\n'
+
+    
+    resp = flask.Response(inner(),
+        mimetype='text/plain'
+    )
+    resp.headers['Access-Control-Allow-Origin'] = '*'
+    resp.headers['Access-Control-Allow-Credentials'] = 'false'
+    resp.headers['Access-Control-Allow-Headers:'] = 'Content-Type,Connection,Server,Date'
+    resp.headers['Access-Control-Allow-Methods'] = 'GET, HEAD, POST, PUT, DELETE, CONNECT, OPTIONS, TRACE, PATCH'
+    resp.headers['X-Content-Type-Options'] = 'nosniff'
+
+    resp.headers['Vary'] = '*'
+    resp.headers['Accept-encoding'] = 'identity'
+    resp.headers['Content-encoding'] = 'identity'
+    resp.headers['Content-Encoding'] = 'compress'
+    resp.headers['Transfer-encoding'] = 'identity'
+    resp.headers['X-Powered-By'] = 'Express'
+
+    return resp
+
+@app.route('/train/',methods=['GET', 'POST'])
+def train():
+    def read_process():
+        arr = ["18","2","3","9","10"]
+        for i in arr:
+            time.sleep(1)
+            print(i)
+            yield i + '\n'
+            # yield i
+    
+    sentence = request.args.get('sentence')
+    # sentence = "happy"
+
+
+    # prefix= "python main.py --all --config config.yml --type \""
+    # cmdEvaluation = prefix + sentence + "\""
+    cmdEvaluation = "python main.py --train --all --config config.yml --verbose"
 
     def inner():
         proc = subprocess.Popen(
@@ -68,8 +118,6 @@ def stream():
     return resp
 
 
-
-
 @app.route('/')
 def index():
     # render the template (below) that will use JavaScript to read the stream
@@ -78,7 +126,7 @@ def index():
 @app.route('/dataS')
 def dataS():
     print(os.getcwd())
-    path=os.getcwd()+'/data/output/SupervisorAgent_sentence_aggregate.csv'
+    path=os.getcwd()+'/data/output1/SupervisorAgent_sentence_aggregate.csv'
     print(path)
     csv_col_name = list(pd.read_csv(path).columns)  # 取到列名
     dict_csv_data = csv.DictReader(open(path, 'r'), csv_col_name)  # 以字典方式读取csv数据
@@ -132,7 +180,7 @@ def dataS():
 @app.route('/dataT')
 def dataT():
     print(os.getcwd())
-    path=os.getcwd()+'/data/output/SupervisorAgent_sentence_test.csv'
+    path=os.getcwd()+'/data/output1/SupervisorAgent_sentence_test.csv'
     print(path)
     csv_col_name = list(pd.read_csv(path).columns)  # 取到列名
     dict_csv_data = csv.DictReader(open(path, 'r'), csv_col_name)  # 以字典方式读取csv数据
@@ -173,7 +221,7 @@ def dataT():
 @app.route('/dataG')
 def dataG():
     print(os.getcwd())
-    path=os.getcwd()+'/data/output/SupervisorAgent_sentence_test.csv'
+    path=os.getcwd()+'/data/output1/SupervisorAgent_sentence_test.csv'
     print(path)
     csv_col_name = list(pd.read_csv(path).columns)  # 取到列名
     dict_csv_data = csv.DictReader(open(path, 'r'), csv_col_name)  # 以字典方式读取csv数据
@@ -270,4 +318,33 @@ def dataG():
     # result.append(len(dict1))
 
     return dictResult
+
+# @app.route('/saveModel')
+@app.route('/saveModel/',methods=['GET', 'POST'])
+def saveModel():
+
+    name = request.args.get('name')
+    path=os.getcwd()+"/data/models_saved"
+    # newpath=path+"/Model_"+name
+    newpath=path+"/Model_"+name
+
+    currentModel=os.getcwd()+"/data/models"
+    import shutil
+    shutil.copytree(currentModel, newpath)
+    return "saved"
+
+@app.route('/readNames')
+def readNames():
+    import os
+    path=os.getcwd()+"/data/models_saved"
+    fileList = os.listdir(path)
+
+    nameList = []
+    for name in fileList:
+        nameList.append({
+          "value": name,
+        })
+    print(nameList)
+
+    return jsonify(nameList)
 

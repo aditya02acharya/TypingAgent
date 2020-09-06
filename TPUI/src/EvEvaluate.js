@@ -9,6 +9,7 @@ import { EStep2, EStepV } from "./comp/CSteps";
 import { CProgress } from "./comp/CProgress";
 import { EvCard1 } from "./comp/CCard";
 
+
 const modelLogs = [{ log: "This is the evaluation log" }];
 
 // Rendering list data
@@ -31,6 +32,9 @@ function dataHandle(xhr, position) {
   position = messages.length - 1;
 }
 
+function evaDone() {
+  this.props.history.push("/evaluate/process1");
+}
 class EvEvaluate extends Component {
   constructor(props) {
     super(props);
@@ -39,13 +43,9 @@ class EvEvaluate extends Component {
       sentence: "",
       log: modelLogs,
     };
+    // this.handleEvaDone = this.handleEvaDone.bind(this);
+    this.evaDone = evaDone.bind(this);
   }
-
-  // state = {
-  //   checked: false,
-  //   sentence: "",
-  //   log: modelLogs,
-  // };
 
   onChange = (e) => {
     console.log("checked");
@@ -58,21 +58,36 @@ class EvEvaluate extends Component {
     this.props.history.push("/evaluate/result");
   };
 
+  handleEvaDone(){
+    this.props.history.push("/evaluate/process1");
+  };
+
+  
+
   handleClickUpdate = () => {};
 
   // Pass the parameter from the model
   componentDidMount() {
     var data = this.props.location.state;
 
+    // evaluation
     setTimeout(() => {
       if (data != undefined) {
-        var { sentence } = data;
-        this.setState({
-          sentence: sentence,
-          log: modelLogs,
-        });
-        this.startEvaluation();
+        if(data.prev === "evaluation"){
+          console.log("evaluation")
+          var { sentence } = data;
+          this.setState({
+            sentence: sentence,
+            log: modelLogs,
+          });
+          this.startEvaluation();
+          console.log(this.state.log);
+        }
+        if(data.prev === "training"){
+          console.log("training")
+          this.startTraining();
         console.log(this.state.log);
+        }
       }
     }, 0);
   }
@@ -114,6 +129,10 @@ class EvEvaluate extends Component {
       position = messages.length - 1;
     }
 
+    // function evaDone() {
+    //   this.props.history.push("/evaluate/process1");
+    // }
+
     var timer;
     timer = setInterval(function () {
       // loading the unfinished data
@@ -128,9 +147,74 @@ class EvEvaluate extends Component {
         dataHandle();
         clearInterval(timer);
         console.log("done");
+        // evaDone();
+        // this.handleEvaDone.bind(this);
+        // console.log(this.state.sentence);
       }
     }, 100);
   };
+
+    // Start training by calling the api
+    startTraining = () => {
+      var xhr = new XMLHttpRequest();
+      let sentence = "no"
+      var url = "/train/?sentence=" + sentence;
+      console.log(url);
+      // var url = "/stream";
+  
+      xhr.open("GET", url, true);
+      xhr.setRequestHeader("content-type", "text/event-stream;charset=UTF-8");
+      xhr.send();
+      var position = 0;
+  
+      // !IMPORTANT to make sure this calls the correct function
+      // You’re calling this.setState inside of your callback to Messages.slice().
+      // You need to cache the reference to this outside of that API call.
+      let currentComponent = this;
+  
+      function dataHandle() {
+        var messages = xhr.responseText.split("\n");
+        var log = "";
+        // Get the new line and update the state to trigger rendering
+        messages.slice(position, -1).forEach(function (value) {
+          console.log(value);
+  
+          log = value;
+          var json = { log: log };
+          modelLogs.push(json);
+          console.log(modelLogs);
+  
+          currentComponent.setState({
+            log: modelLogs,
+          });
+        });
+        position = messages.length - 1;
+      }
+  
+      // function evaDone() {
+      //   this.props.history.push("/evaluate/process1");
+      // }
+  
+      var timer;
+      timer = setInterval(function () {
+        // loading the unfinished data
+        if (xhr.readyState == 3) {
+          // dataHandle(xhr, position);
+  
+          dataHandle();
+        }
+  
+        // stop checking once the response has ended
+        if (xhr.readyState == 4) {
+          dataHandle();
+          clearInterval(timer);
+          console.log("done");
+          // evaDone();
+          // this.handleEvaDone.bind(this);
+          // console.log(this.state.sentence);
+        }
+      }, 100);
+    };
 
   render() {
     const { checked } = this.state;

@@ -57,6 +57,16 @@ class TrModel extends Component {
     // console.log(this.state.fields);
   };
 
+  handleClickEvP = () => {
+    var data = { sentence: "no", prev: "training" };
+    var path = {
+      pathname: "/evaluate/process",
+      state: data,
+    };
+    // this.props.history.push("/evaluate/process");
+    this.props.history.push(path);
+  };
+
   render() {
     // console.log(this.state.fields);
     return (
@@ -93,7 +103,7 @@ class TrModel extends Component {
           <TrDK />
         </EvCard5>
         <div className="start-ev-btn">
-          <Button className="button" type="primary" size="large">
+          <Button className="button" type="primary" size="large" onClick={this.handleClickEvP}>
             Start Training
           </Button>
         </div>

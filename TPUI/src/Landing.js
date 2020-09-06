@@ -36,7 +36,7 @@ class Landing extends Component {
   render() {
     return (
       <div className="landing">
-        <intro>
+        <div className="intro">
           <div className="intro-img">
             <img src={Intro} alt="" />
           </div>
@@ -51,7 +51,7 @@ class Landing extends Component {
               performance.
             </p>
           </div>
-        </intro>
+        </div>
         <div className="start">
           <div style={{}}>
             {/* <label>
