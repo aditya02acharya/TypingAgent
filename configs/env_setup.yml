@@ -8,10 +8,11 @@ dependencies:
   - pandas
   - python-levenshtein
   - pip:
-    - chainer
-    - chainerrl
-    - tqdm
-    - PyYAML
-    - shelljob
-    - flask 
-    - python-dotenv
+      - chainer
+      - chainerrl
+      - tqdm
+      - PyYAML
+      - shelljob
+      - flask
+      - python-dotenv
+      - ruamel.yaml

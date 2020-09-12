@@ -1,7 +1,7 @@
 import time
 # from flask import Flask, request
 import flask
-from flask import request, Response, render_template, jsonify
+from flask import request, Response, render_template, jsonify, send_file, make_response
 
 import os
 import subprocess
@@ -13,11 +13,14 @@ import csv
 import json
 import pandas as pd
 from copy import deepcopy
+from ruamel import yaml
+import re
 
 
 app = flask.Flask(__name__)
+app.run(threaded=True) 
 
-
+# Model evaluation
 @app.route('/stream/',methods=['GET', 'POST'])
 def stream():
     def read_process():
@@ -33,7 +36,7 @@ def stream():
 
 
     prefix= "python main.py --all --config config.yml --type \""
-    cmdEvaluation = prefix + sentence + "\"" + "--verbose"
+    cmdEvaluation = prefix + sentence + "\"" + " --verbose"
     # cmdEvaluation = "python main.py --train --all --config config.yml --verbose"
 
     def inner():
@@ -68,6 +71,8 @@ def stream():
 
     return resp
 
+
+# Model training
 @app.route('/train/',methods=['GET', 'POST'])
 def train():
     def read_process():
@@ -76,14 +81,8 @@ def train():
             time.sleep(1)
             print(i)
             yield i + '\n'
-            # yield i
     
     sentence = request.args.get('sentence')
-    # sentence = "happy"
-
-
-    # prefix= "python main.py --all --config config.yml --type \""
-    # cmdEvaluation = prefix + sentence + "\""
     cmdEvaluation = "python main.py --train --all --config config.yml --verbose"
 
     def inner():
@@ -91,7 +90,7 @@ def train():
             [cmdEvaluation],             #call something with a lot of output so we can see it
             shell=True,
             stdout=subprocess.PIPE,
-            universal_newlines=True # so fucking important....
+            universal_newlines=True # important....
         )
 
         for line in iter(proc.stdout.readline,''):
@@ -118,18 +117,17 @@ def train():
     return resp
 
 
-@app.route('/')
-def index():
-    # render the template (below) that will use JavaScript to read the stream
-    return render_template('index.html')
-
+# Result - Get sentence level data
 @app.route('/dataS')
 def dataS():
     print(os.getcwd())
+    # TODO: Change the correct path for reading the output files
+    # Now it’s '/data/output1/…
+    # Should be  '/data/output/…
     path=os.getcwd()+'/data/output1/SupervisorAgent_sentence_aggregate.csv'
     print(path)
-    csv_col_name = list(pd.read_csv(path).columns)  # 取到列名
-    dict_csv_data = csv.DictReader(open(path, 'r'), csv_col_name)  # 以字典方式读取csv数据
+    csv_col_name = list(pd.read_csv(path).columns)  # column mame
+    dict_csv_data = csv.DictReader(open(path, 'r'), csv_col_name)  # read csv as dict
 
     csv_col_name[0] = "sentence"
     csv_col_name[csv_col_name.index("sentence.id")] = "id"
@@ -157,15 +155,14 @@ def dataS():
 
     print(csv_col_name)
 
-    next(dict_csv_data)  # 取出第一条数据也就是表头
-    next(dict_csv_data)  # 取出第一条数据也就是表头
-    next(dict_csv_data)  # 取出第一条数据也就是表头
-    dict1 = {}  # 字典1 整个字典
-    dict2 = {}  # 字典2 存的是字典1的对应key的value值
+    next(dict_csv_data)  # pop header out
+    next(dict_csv_data)  
+    next(dict_csv_data)  
+    dict1 = {}  
+    dict2 = {}  
 
     for rows in dict_csv_data:
-        dict2 = deepcopy(rows)  # 复制他
-        # dict2.pop('sentence.id')  # 删除key为‘sentence.id’的键值对, keep another one
+        dict2 = deepcopy(rows)  
         dict2.pop('sentence.id.1')
         dict2.pop('agent.id')
         dict2.pop('agent.id.1')
@@ -174,16 +171,15 @@ def dataS():
 
     return dict1
 
-    # return "100"
-
-
+# Result - Get trial level data
 @app.route('/dataT')
 def dataT():
     print(os.getcwd())
+    # TODO: Change the correct path for reading the output files
     path=os.getcwd()+'/data/output1/SupervisorAgent_sentence_test.csv'
     print(path)
-    csv_col_name = list(pd.read_csv(path).columns)  # 取到列名
-    dict_csv_data = csv.DictReader(open(path, 'r'), csv_col_name)  # 以字典方式读取csv数据
+    csv_col_name = list(pd.read_csv(path).columns) 
+    dict_csv_data = csv.DictReader(open(path, 'r'), csv_col_name)  
 
     print(csv_col_name)
 
@@ -202,14 +198,13 @@ def dataT():
     
     print(csv_col_name)
 
-    next(dict_csv_data)  # 取出第一条数据也就是表头
-    dict1 = {}  # 字典1 整个字典
-    dict2 = {}  # 字典2 存的是字典1的对应key的value值
+    next(dict_csv_data) 
+    dict1 = {}  
+    dict2 = {}  
     dict3 = {}
 
     for rows in dict_csv_data:
-        dict2 = deepcopy(rows)  # 复制他
-        # dict2.pop('sid')  # 删除key为‘sentence.id’的键值对, keep another one
+        dict2 = deepcopy(rows)  
         if dict1.get(rows['sid']): # if sid exist, push the new trial
             dict1[rows['sid']][rows['aid']] = dict2
         else:
@@ -218,13 +213,15 @@ def dataT():
 
     return dict1
 
+# Result - Calculate general info for result data
 @app.route('/dataG')
 def dataG():
     print(os.getcwd())
+    # TODO: Change the correct path for reading the output files
     path=os.getcwd()+'/data/output1/SupervisorAgent_sentence_test.csv'
     print(path)
-    csv_col_name = list(pd.read_csv(path).columns)  # 取到列名
-    dict_csv_data = csv.DictReader(open(path, 'r'), csv_col_name)  # 以字典方式读取csv数据
+    csv_col_name = list(pd.read_csv(path).columns)  
+    dict_csv_data = csv.DictReader(open(path, 'r'), csv_col_name)  
 
     print(csv_col_name)
 
@@ -243,9 +240,9 @@ def dataG():
     
     print(csv_col_name)
 
-    next(dict_csv_data)  # 取出第一条数据也就是表头
-    dict1 = {}  # 字典1 整个字典
-    dict2 = {}  # 字典2 存的是字典1的对应key的value值
+    next(dict_csv_data)  # pop out header
+    dict1 = {}  
+    dict2 = {}  
     dict3 = {}
 
     dictResult = {}
@@ -276,7 +273,7 @@ def dataG():
         corErr.append(float(rows["corErr"]))
         unErr.append(float(rows["unErr"]))
 
-        dict2 = deepcopy(rows)  # 复制他
+        dict2 = deepcopy(rows)  
         if dict1.get(rows['sid']): # if sid exist, push the new trial
             dict1[rows['sid']][rows['aid']] = dict2
         else:
@@ -311,21 +308,15 @@ def dataG():
     dictResult["unErrMean"] = np.mean(unErr) 
     dictResult["unErrSD"] = np.std(unErr) 
 
-
     print(len(dict1))
-
-    # result = []
-    # result.append(len(dict1))
-
     return dictResult
 
-# @app.route('/saveModel')
+# Result - Save model
 @app.route('/saveModel/',methods=['GET', 'POST'])
 def saveModel():
 
     name = request.args.get('name')
     path=os.getcwd()+"/data/models_saved"
-    # newpath=path+"/Model_"+name
     newpath=path+"/Model_"+name
 
     currentModel=os.getcwd()+"/data/models"
@@ -333,9 +324,9 @@ def saveModel():
     shutil.copytree(currentModel, newpath)
     return "saved"
 
+# Evaluate/Model - Read built-in and saved models' name
 @app.route('/readNames')
 def readNames():
-    import os
     path=os.getcwd()+"/data/models_saved"
     fileList = os.listdir(path)
 
@@ -344,7 +335,91 @@ def readNames():
         nameList.append({
           "value": name,
         })
+    nameList.insert(0,{
+          "value": "Default",
+        })
     print(nameList)
 
     return jsonify(nameList)
+
+# Evaluate/Model - Set evaluation model onClick
+@app.route('/setModel/',methods=['GET', 'POST'])
+def setModel():
+    def update_yml(name):
+        path=os.getcwd()+"/configs/training_config.yml"
+        with open(path, encoding="utf-8") as f:
+            content = yaml.load(f, Loader=yaml.RoundTripLoader)
+            # modify the parameters in yml
+            content['finger']['save_path'] = "data/models_saved/" + name + "/finger"
+            content['supervisor']['save_path'] = "data/models_saved/" + name + "/supervisor"
+
+        with open(path, 'w', encoding="utf-8") as nf:
+            yaml.dump(content, nf, Dumper=yaml.RoundTripDumper)
+
+    def reset_yml():
+        path=os.getcwd()+"/configs/training_config.yml"
+        with open(path, encoding="utf-8") as f:
+            content = yaml.load(f, Loader=yaml.RoundTripLoader)
+            content['finger']['save_path'] = "data/models/finger"
+            content['supervisor']['save_path'] = "data/models/supervisor"
+        with open(path, 'w', encoding="utf-8") as nf:
+            yaml.dump(content, nf, Dumper=yaml.RoundTripDumper)
+
+    name = request.args.get('name')
+    if name != "Default":
+        update_yml(name)
+    else:
+        reset_yml()
+
+    return "done"
+
+
+# Result - Generate video on trial level
+@app.route('/generateVideo/',methods=['GET', 'POST'])
+def video():
+    def read_process():
+        arr = ["18","2","3","9","10"]
+        for i in arr:
+            time.sleep(1)
+            print(i)
+            yield i + '\n'
+            # yield i
+    
+    sentence = request.args.get('sentence')
+
+    prefix= "python main.py --supervisor --config config.yml --type \""
+    cmdEvaluation = prefix + sentence + "\""
+    # cmdEvaluation = "python main.py --train --all --config config.yml --verbose"
+
+    def inner():
+        proc = subprocess.Popen(
+            [cmdEvaluation],             #call something with a lot of output so we can see it
+            shell=True,
+            stdout=subprocess.PIPE,
+            universal_newlines=True #!mportant....
+        )
+
+        for line in iter(proc.stdout.readline,''):
+            # time.sleep(1)                           # Don't need this just shows the text streaming
+            print(line.rstrip())
+            yield line.rstrip() + '\n'
+
+    
+    resp = flask.Response(inner(),
+        mimetype='text/plain'
+    )
+    resp.headers['Access-Control-Allow-Origin'] = '*'
+    resp.headers['Access-Control-Allow-Credentials'] = 'false'
+    resp.headers['Access-Control-Allow-Headers:'] = 'Content-Type,Connection,Server,Date'
+    resp.headers['Access-Control-Allow-Methods'] = 'GET, HEAD, POST, PUT, DELETE, CONNECT, OPTIONS, TRACE, PATCH'
+    resp.headers['X-Content-Type-Options'] = 'nosniff'
+
+    resp.headers['Vary'] = '*'
+    resp.headers['Accept-encoding'] = 'identity'
+    resp.headers['Content-encoding'] = 'identity'
+    resp.headers['Content-Encoding'] = 'compress'
+    resp.headers['Transfer-encoding'] = 'identity'
+    resp.headers['X-Powered-By'] = 'Express'
+
+    return resp
 

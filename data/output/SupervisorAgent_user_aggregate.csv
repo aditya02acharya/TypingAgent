@@ -1,4 +1,4 @@
 ,sentence.id,sentence.id,target.sentence,target.sentence,wpm,wpm,lev.distance,lev.distance,gaze.shift,gaze.shift,bs,bs,immediate.bs,immediate.bs,delayed.bs,delayed.bs,gaze.keyboard.ratio,gaze.keyboard.ratio,fix.count,fix.count,finger.travel,finger.travel,iki,iki
 ,mean,std,mean,std,mean,std,mean,std,mean,std,mean,std,mean,std,mean,std,mean,std,mean,std,mean,std,mean,std
 agent.id,,,,,,,,,,,,,,,,,,,,,,,,
-0,37.91524839383028,,2,,0,,0,,0,,0.6395583989618473,,9,,25.29292742384507,,271.2817328499427,,0,,0,,69.87657861307777,
+0,29.944969476419235,,2,,1,,1,,0,,0.7393161865895834,,10,,32.42870870273209,,267.1567258166604,,1,,0,,62.204774038211575,
