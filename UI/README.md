@@ -10,7 +10,6 @@ Both "evaluating" and "training" are available.
 ### evaluate/model
 
 - **Corpus Selection**
-<br />
   Choose **Single Sentence** and fill in the field.
 
 - **Model Selection**
