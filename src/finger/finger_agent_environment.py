@@ -241,8 +241,8 @@ class FingerAgentEnv(AgentEnv):
 
         # if random sampling enabled select randomly next sat_desired.
         # if self.random_sample:
-            # Choose a random sat desired value for next action.
-            # self.sat_desired = self.sat_desired_list.index(np.random.choice(self.sat_desired_list))
+        # Choose a random sat desired value for next action.
+        # self.sat_desired = self.sat_desired_list.index(np.random.choice(self.sat_desired_list))
 
         self.calc_max_finger_loc()
 
@@ -336,12 +336,12 @@ class FingerAgentEnv(AgentEnv):
         # calculate the movement time.
         new_finger_loc = [self.finger_location[0] + action[0], self.finger_location[1] + action[1]]
         self.dist = distance(self.finger_location, new_finger_loc)
-        #self.dist = self.device.convert_to_meters(self.dist)
+        # self.dist = self.device.convert_to_meters(self.dist)
         self.logger.debug("Distance to move (in cm): %.2f" % self.dist)
         movement_time = WHo_mt(self.dist, sigma)
-        #if self.action_type == 1:
+        if self.action_type == 1:
             # if peck add motor movement time for response
-        #    movement_time += 0.15
+            movement_time += 0.15
         self.update_model_time(movement_time * 1000)
         self.logger.debug("took %f seconds to move finger." % movement_time)
         new_loc = self.update_sensor_position(action, sigma)

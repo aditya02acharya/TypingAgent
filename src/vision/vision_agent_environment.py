@@ -119,7 +119,7 @@ class VisionAgentEnv(AgentEnv):
         distance_traveled = distance(self.prev_eye_loc, coord)
         self.logger.debug("Distance: %.2f" % distance_traveled)
 
-        # TODO: I'm not sure where this 14 is coming from in legacy code.
+        # the number 14 is a scaling factor for our task.
         eccentricity = visual_distance(distance_traveled, self.user_distance)/14
         self.logger.debug("eccentricity : {%.2f}" % eccentricity)
 

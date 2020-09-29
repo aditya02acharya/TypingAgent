@@ -15,6 +15,7 @@ from src.vision.vision_agent import VisionAgent
 from src.finger.finger_agent import FingerAgent
 from src.proofread.proofread_agent import ProofreadAgent
 from src.display.touchscreendevice import TouchScreenDevice
+from src.utilities.utils import distance
 
 
 class SupervisorEnvironment(AgentEnv):
@@ -76,6 +77,7 @@ class SupervisorEnvironment(AgentEnv):
         self.finger_travel_dist = 0
         self.saccade_time = 0
         self.encoding_time = 0
+        self.chunk = 0
         self.eye_test_data = []
         self.finger_test_data = []
         self.sentence_test_data = []
@@ -83,6 +85,7 @@ class SupervisorEnvironment(AgentEnv):
         self.eye_viz_log = []
         self.finger_viz_log = []
         self.typing_viz_log = []
+        self.chunk_length = []
         self.train = train
         self.belief_state = None
         if not self.train:
@@ -96,7 +99,6 @@ class SupervisorEnvironment(AgentEnv):
             # assuming the 1st column will always be sentence id
             self.sentences_id = data.iloc[:, 0].values
             self.sentences = list(data.iloc[:, 1].values)
-            print(len(self.sentences))
             self.sentences_bkp = self.sentences.copy()
         else:
             data = pd.read_csv(path.join("data", "user_data", "train_corpus.csv"), sep=",")
@@ -105,7 +107,6 @@ class SupervisorEnvironment(AgentEnv):
         self.vision_agent.agent.load()
         self.finger_agent.load()
         self.proofread_agent.agent.load()
-        print(len(self.sentences))
 
     def update_model_time(self, delta):
         """
@@ -191,11 +192,14 @@ class SupervisorEnvironment(AgentEnv):
                                         round(self.finger_model_time, 4), 'pressed key'])
 
             # finger waits for eye and eye waits for finger. Next action taken when both have reacted for a target.
-            if finger_time > eye_time:
+            if self.finger_model_time > self.eye_model_time:
+                self.eye_on_keyboard = True if not tuple(self.eye_loc) in self.proofread_agent.env.proof_locs else False
+                if self.eye_on_keyboard:
+                    self.eye_on_kb_time += (self.finger_model_time - self.eye_model_time)
                 self.eye_model_time = self.finger_model_time
                 self.eye_test_data.append(
                     [round(self.eye_model_time, 4), self.eye_loc[0], self.eye_loc[1], "", "", 'wait'])
-            elif finger_time < eye_time:
+            elif self.finger_model_time < self.eye_model_time:
                 self.finger_model_time = self.eye_model_time
                 self.finger_test_data.append(
                     [round(self.finger_model_time, 4), self.finger_loc[0], self.finger_loc[1], "", "", "wait"])
@@ -208,6 +212,7 @@ class SupervisorEnvironment(AgentEnv):
             self.typed_detailed += '<'
         elif letter != '>':
             self.typed += letter
+            self.chunk += 1
             self.typed_detailed += letter
         else:
             # pressed enter key. this is terminal state.
@@ -237,6 +242,7 @@ class SupervisorEnvironment(AgentEnv):
         if action < len(self.sat_desired):
             # Typing action was selected.
             sigma_desired = self.sat_desired[action]
+            self.logger.debug("Typing character %s, with desired SAT: %.2f" % (char, sigma_desired))
 
             # EYE MOVEMENT
             eye_time = self.make_eye_movement(char)
@@ -250,12 +256,33 @@ class SupervisorEnvironment(AgentEnv):
             if not self.is_error:
                 self.is_error = not self.finger_agent.env.hit
 
+                # code block hard-coded for now. This is for intelligent text entry.
+                # TODO: clean this up and move to device.
+                char_coord = self.device.get_coordinate(char)
+                x = random.choice(char_coord[0])
+                y = random.choice(char_coord[1])
+                dist = distance([x, y], self.finger_loc)
+
+                # choose the correct correction rate. default 0.0 which means don't correct.
+                # Also, only correct chars that are 1 key away from target.
+                if random.random() < 0.0 and dist <= 1.5:
+                    self.typed = self.typed[:-1]
+                    self.typed += char
+                    self.is_error = False
+                    if char == '>':
+                        self.is_terminal = True
+
             # update proofread
             self.update_proofread(self.proofread_agent.env.error_probability_list[self.finger_agent.env.sat_true])
 
         else:
             # EYE MOVEMENT FOR PROOFREADING
             sigma_desired = self.sat_desired[(action - len(self.sat_desired))]
+
+            self.logger.debug("Proofreading, with desired SAT: %.2f" % sigma_desired)
+
+            self.chunk_length.append(self.chunk)
+            self.chunk = 0
 
             # Check if eyes are on keyboard
             self.eye_on_keyboard = True if not tuple(self.eye_loc) in self.proofread_agent.env.proof_locs else False
@@ -268,6 +295,10 @@ class SupervisorEnvironment(AgentEnv):
             self.n_fixations_freq += 1
 
             self.eye_model_time += (self.mt * 1000)
+            if not self.train and self.finger_model_time < self.eye_model_time:
+                self.finger_model_time = self.eye_model_time
+                self.finger_test_data.append(
+                    [round(self.finger_model_time, 4), self.finger_loc[0], self.finger_loc[1], "", "", "wait"])
 
             if not self.train:
                 self.eye_test_data.append(
@@ -348,10 +379,11 @@ class SupervisorEnvironment(AgentEnv):
             err_lev_dist = lev.distance(self.sentence_to_type, self.typed)
             proportion_gaze_kb = self.eye_on_kb_time / self.eye_model_time
             iki = self.finger_model_time / len(self.typed_detailed)
+            c_ln = np.mean(self.chunk_length) if len(self.chunk_length) > 0 else 0.0
             line = [self.sentences_id[index], self.agent_id, self.sentence_to_type, wpm, err_lev_dist,
                     self.gaze_shift_kb_to_txt_freq, self.n_back_space_freq, self.immediate_backspace_freq,
                     self.delay_backspace_freq, proportion_gaze_kb, self.n_fixations_freq,
-                    self.finger_travel_dist, iki, corrected, uncorrected, np.mean(self.fixation_duration)]
+                    self.finger_travel_dist, iki, corrected, uncorrected, np.mean(self.fixation_duration), c_ln]
             self.sentence_test_data.append(line)
 
         return self.belief_state, reward, self.is_terminal, {}
@@ -393,7 +425,9 @@ class SupervisorEnvironment(AgentEnv):
         self.finger_travel_dist = 0
         self.saccade_time = 0
         self.encoding_time = 0
+        self.chunk = 0
         self.fixation_duration.clear()
+        self.chunk_length.clear()
 
         self.proofread_agent.env.set_belief()
         self.proofread_q = self.proofread_agent.get_q_value()
@@ -459,5 +493,7 @@ class SupervisorEnvironment(AgentEnv):
         self.proofread_agent.env.error_prob = self.proofread_agent.env.update_error_belief(obs_error,
                                                                                            self.proofread_agent.env.error_prob,
                                                                                            error_chance)
+
+        self.logger.debug("Updated error probability to %.2f" % self.proofread_agent.env.error_prob)
         self.proofread_agent.env.set_belief()
         self.proofread_q = self.proofread_agent.get_q_value()

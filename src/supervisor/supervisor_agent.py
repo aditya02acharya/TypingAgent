@@ -99,11 +99,10 @@ class SupervisorAgent(Agent):
 
         if train:
             chainer.config.train = True
-            #if self.verbose:
-            #    self.pbar = tqdm.tqdm(total=self.episodes, ascii=True,
-            #                     bar_format='{l_bar}{n}, {remaining}\n')
-            #else:
-            #    self.pbar = tqdm.tqdm(total=self.episodes)
+            if self.verbose:
+                self.pbar = tqdm.tqdm(total=self.episodes, ascii=True, bar_format='{l_bar}{n}, {remaining}\n')
+            else:
+                self.pbar = tqdm.tqdm(total=self.episodes)
         else:
             chainer.config.train = False
             self.agent.act_deterministically = False
@@ -113,7 +112,7 @@ class SupervisorAgent(Agent):
         Trains the model for given number of episodes.
         """
 
-        # progress_bar = ProgressBar(self.pbar, episodes)
+        progress_bar = ProgressBar(self.pbar, episodes)
 
         experiments.train_agent_with_evaluation(
             self.agent, self.env,
@@ -122,7 +121,7 @@ class SupervisorAgent(Agent):
             eval_n_episodes=10,  # 10 episodes are sampled for each evaluation
             train_max_episode_len=100,  # Maximum length of each episode
             eval_interval=self.log_interval,  # Evaluate the agent after every 1000 steps
-            step_hooks=[],  # add hooks
+            step_hooks=[progress_bar],  # add hooks
             logger=self.logger,
             outdir=self.save_path)  # Save everything to 'supervisor' directory
 
@@ -143,7 +142,7 @@ class SupervisorAgent(Agent):
             sentence_agg_data = [["sentence.id", "agent.id", "target.sentence", "wpm", "lev.distance",
                                   "gaze.shift", "bs", "immediate.bs", "delayed.bs",
                                   "gaze.keyboard.ratio", "fix.count", "finger.travel", "iki", "correct.error",
-                                  "uncorrected.error", "fix.duration"]]
+                                  "uncorrected.error", "fix.duration", "chunk.length"]]
             if self.verbose:
                 iter = tqdm.tqdm(iterable=range(n_users), ascii=True,
                                  bar_format='{l_bar}{n}, {remaining}\n')
@@ -175,22 +174,25 @@ class SupervisorAgent(Agent):
                 writer = csv.writer(f)
                 writer.writerows(sentence_agg_data)
 
-            with open(path.join("data", "output", "SupervisorAgent_Vision_Viz.csv"), "w", newline="") as f:
-                writer = csv.writer(f)
-                writer.writerows(self.env.eye_viz_log)
+            if not self.finger_two:
+                with open(path.join("data", "output", "SupervisorAgent_Vision_Viz.csv"), "w", newline="") as f:
+                    writer = csv.writer(f)
+                    writer.writerows(self.env.eye_viz_log)
 
-            with open(path.join("data", "output", "SupervisorAgent_Finger_Viz.csv"), "w", newline="") as f:
-                writer = csv.writer(f)
-                writer.writerows(self.env.finger_viz_log)
+                with open(path.join("data", "output", "SupervisorAgent_Finger_Viz.csv"), "w", newline="") as f:
+                    writer = csv.writer(f)
+                    writer.writerows(self.env.finger_viz_log)
 
-            with open(path.join("data", "output", "SupervisorAgent_Typing_Viz.csv"), "w", newline="") as f:
-                writer = csv.writer(f)
-                writer.writerows(self.env.typing_viz_log)
+                with open(path.join("data", "output", "SupervisorAgent_Typing_Viz.csv"), "w", newline="") as f:
+                    writer = csv.writer(f)
+                    writer.writerows(self.env.typing_viz_log)
 
         else:
             self.env.sentence_test_data.append(["sentence.id", "agent.id", "target.sentence", "wpm", "lev.distance",
                                                 "gaze.shift", "bs", "immediate.bs", "delayed.bs",
-                                                "gaze.keyboard.ratio", "fix.count", "finger.travel", "iki"])
+                                                "gaze.keyboard.ratio", "fix.count", "finger.travel", "iki",
+                                                "correct.error",
+                                                "uncorrected.error", "fix.duration", "chunk.length"])
             state = self.env.reset()
             while not done:
                 action = self.agent.act(state)
