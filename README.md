@@ -53,6 +53,9 @@ To see all available argument, use the command below.
 python main.py --help
 ```
 
+### Demo of the model
+![demo](./data/output/demo2.gif)
+
 ### Configuration setting
 
 All project configuration files are kept under configs folder.
