@@ -1,4 +1,0 @@
-,sentence.id,sentence.id,wpm,wpm,lev.distance,lev.distance,gaze.shift,gaze.shift,bs,bs,immediate.bs,immediate.bs,delayed.bs,delayed.bs,gaze.keyboard.ratio,gaze.keyboard.ratio,fix.count,fix.count,finger.travel,finger.travel,iki,iki,correct.error,correct.error,uncorrected.error,uncorrected.error,fix.duration,fix.duration,chunk.length,chunk.length
-,mean,std,mean,std,mean,std,mean,std,mean,std,mean,std,mean,std,mean,std,mean,std,mean,std,mean,std,mean,std,mean,std,mean,std,mean,std
-agent.id,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
-0,58,,16.749488722090998,,0,,4,,4,,0,,2,,0.9132568400847876,,21,,78.99475727040647,,436.0937785792357,,1,,0,,255.32573705822531,,3.0,

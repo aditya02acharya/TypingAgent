@@ -1,8 +1,0 @@
-model time,fingerloc x,fingerloc y,action x,action y,type
-0.0,2,4,,,start
-221.8566,2,2,2,2,peck
-466.6179,1,5,1,5,peck
-661.6852,0,6,0,6,peck
-975.7368,2,2,2,2,peck
-1220.4982,1,5,1,5,peck
-1415.5654,0,6,0,6,peck
