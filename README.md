@@ -1,6 +1,8 @@
 # Touchscreen Typing as Optimal Adaptation
 
-This project presents a computational model of how people type on touch-screen keyboards.
+This project presents a computational model of how people type on touchscreen keyboards.
+
+Project Page: https://userinterfaces.aalto.fi/touchscreen-typing/
 
 ## Getting Started
 
