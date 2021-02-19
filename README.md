@@ -4,7 +4,7 @@ This project presents a computational model of how people type on touchscreen ke
 
 For more information: 
 
-  * [Project Page](https://userinterfaces.aalto.fi/touchscreen-typing/)
+  * [Project website](https://userinterfaces.aalto.fi/touchscreen-typing/)
   * [Research paper](https://userinterfaces.aalto.fi/touchscreen-typing/resources/touchscreen_typing_as_optimal_adaptation.pdf)
 
 ## Demo of the model
