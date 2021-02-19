@@ -145,6 +145,5 @@ Please wait for around 20s, and the landing page http://localhost:3000/#/ will b
 - **Mohammad Uzair**
 - **Anqi Yang**
 
-## License
-
 ## Acknowledgments
+This research has been supported by the Academy of Finland projects BAD and Human Automata, and Finnish Center for AI (FCAI).
