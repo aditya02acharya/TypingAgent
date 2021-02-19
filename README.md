@@ -2,7 +2,13 @@
 
 This project presents a computational model of how people type on touchscreen keyboards.
 
-Project Page: https://userinterfaces.aalto.fi/touchscreen-typing/
+For more information: 
+
+  * [Project Page](https://userinterfaces.aalto.fi/touchscreen-typing/)
+  * [Research paper](https://userinterfaces.aalto.fi/touchscreen-typing/resources/touchscreen_typing_as_optimal_adaptation.pdf)
+
+## Demo of the model
+![demo](./data/output/demo2.gif)
 
 ## Getting Started
 
@@ -54,9 +60,6 @@ To see all available argument, use the command below.
 ```
 python main.py --help
 ```
-
-### Demo of the model
-![demo](./data/output/demo2.gif)
 
 ### Configuration setting
 
