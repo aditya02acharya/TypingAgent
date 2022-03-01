@@ -10,6 +10,22 @@ For more information:
 ## Demo of the model
 ![demo](./data/output/demo2.gif)
 
+## Citation
+
+Please cite our paper as:
+
+```
+@article{jokinen2021touchscreen,
+  title={Touchscreen typing as optimal supervisory control},
+  author={Jokinen, Jussi and Acharya, Aditya and Uzair, Mohammad and Jiang, Xinhui and Oulasvirta, Antti},
+  booktitle={Proceedings of the 2021 CHI Conference on Human Factors in Computing Systems},
+  pages={1--14},
+  year={2021},
+  publisher = {ACM},
+  doi = {https://doi.org/10.1145/3411764.3445483}
+}
+```
+
 ## Getting Started
 
 These instructions will get you a copy of the project up and running on your local machine for development and testing purposes.
